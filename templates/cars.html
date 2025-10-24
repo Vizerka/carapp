@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Twoje samochody{% endblock %}
+{% block content %}
+<h1 class="mb-3">Twoje samochody</h1>
+<a class="btn btn-success mb-3" href="{{ url_for('car_new') }}">+ Dodaj auto</a>
+
+<table class="table table-hover align-middle">
+  <thead>
+    <tr>
+      <th>Marka</th><th>Model</th><th>Rok</th><th>VIN</th><th>Rej.</th><th>1. rej.</th>
+      <th>OC do</th><th>Przegląd do</th><th>Ostatni przebieg</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in cars %}
+      {% set last_odo = c.last_odometer %}
+      {% set last_oc  = c.last_insurance %}
+      {% set last_ti  = c.last_inspection %}
+      {% set oc_days = (last_oc.valid_to | days_left) if last_oc else None %}
+      {% set ti_days = (last_ti.valid_to | days_left) if last_ti else None %}
+      <tr>
+        <td>{{ c.make }}</td>
+        <td>{{ c.model }}</td>
+        <td>{{ c.year or '—' }}</td>
+        <td>{{ c.vin or '—' }}</td>
+        <td>{{ c.reg_number or '—' }}</td>
+        <td>{{ c.first_registration or '—' }}</td>
+
+        <td class="{% if oc_days is not none and oc_days <= 7 %}text-danger fw-bold{% elif oc_days is not none and oc_days <= 30 %}text-warning fw-bold{% endif %}">
+          {{ last_oc and last_oc.valid_to or '—' }}
+        </td>
+
+        <td class="{% if ti_days is not none and ti_days <= 7 %}text-danger fw-bold{% elif ti_days is not none and ti_days <= 30 %}text-warning fw-bold{% endif %}">
+          {{ last_ti and last_ti.valid_to or '—' }}
+        </td>
+
+        <td>{{ last_odo and (last_odo.km ~ ' km') or '—' }}</td>
+
+        <td class="text-end">
+          <a class="btn btn-sm btn-primary" href="{{ url_for('car_detail', car_id=c.id) }}">Szczegóły</a>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if not cars %}
+  <p>Brak aut. Dodaj pierwsze: <a href="{{ url_for('car_new') }}">+ Dodaj auto</a>.</p>
+{% endif %}
+{% endblock %}

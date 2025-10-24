@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="mb-3">Twoje samochody</h1>
+<a class="btn btn-success mb-3" href="{{ url_for('car_new') }}">+ Dodaj auto</a>
+<table class="table table-hover">
+  <thead><tr>
+    <th>Marka</th><th>Model</th><th>Rok</th><th>VIN</th><th>Rejestracja</th><th>1. rejestracja</th>
+  </tr></thead>
+  <tbody>
+    {% for c in cars %}
+      <tr>
+        <td>{{ c.make }}</td>
+        <td>{{ c.model }}</td>
+        <td>{{ c.year or '—' }}</td>
+        <td>{{ c.vin or '—' }}</td>
+        <td>{{ c.reg_number or '—' }}</td>
+        <td>{{ c.first_registration or '—' }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% if not cars %}
+  <p>Brak aut. Dodaj pierwsze: <a href="{{ url_for('car_new') }}">+ Dodaj auto</a>.</p>
+{% endif %}
+{% endblock %}

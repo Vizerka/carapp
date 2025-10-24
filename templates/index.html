@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Strona główna — Car Manager{% endblock %}
+{% block content %}
+  <h1 class="mb-3">Witaj w Car Managerze 👋</h1>
+<p>To Twoja pierwsza strona renderowana szablonem Jinja2. </p>
+<p>Użyj nawigacji powyżej, aby przejść do innych sekcji aplikacji.</p>
+<p>Miłego zarządzania samochodami!</p>
+<p>🚗💨</p>
+<p>Autor: Wiktoria</p>
+<h5>Źródło: <a href="https://github.com/WiktoriaKowalska/car_manager">https://github.com/WiktoriaKowalska/car_manager</a></h5>
+<p>Ikony: <a href="https://www.flaticon.com/free-icons/car" title="car icons">Car icons created by Freepik - Flaticon</a></p>
+<div class="mt-4">
+    <img src="{{ url_for('static', filename='car_image.jpg') }}" alt="Car Image" class="img-fluid rounded">
+</div>
+{% endblock %}
