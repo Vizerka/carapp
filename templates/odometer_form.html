@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Edytuj przebieg — {{ car.make }} {{ car.model }}{% endblock %}
+{% block content %}
+<h2>Edytuj przebieg — {{ car.make }} {{ car.model }}</h2>
+<form method="post" class="row g-3">
+  <div class="col-md-4">
+    <label class="form-label">Data</label>
+    <input type="date" name="date" class="form-control" value="{{ entry.date }}" required>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label">Przebieg [km]</label>
+    <input type="number" name="km" class="form-control" min="0" step="1" value="{{ entry.km }}" required>
+  </div>
+  <div class="col-md-8">
+    <label class="form-label">Notatka</label>
+    <input type="text" name="note" class="form-control" value="{{ entry.note or '' }}">
+  </div>
+  <div class="col-12 d-flex gap-2">
+    <button class="btn btn-primary">Zapisz</button>
+    <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=car.id) }}">Anuluj</a>
+  </div>
+</form>
+{% endblock %}

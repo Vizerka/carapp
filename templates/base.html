@@ -9,15 +9,27 @@
 <body class="bg-light">
 <nav class="navbar navbar-dark bg-dark mb-4">
   <div class="container">
-    <a class="navbar-brand" href="/">Car Manager</a>
+    <a class="navbar-brand" href="{{ url_for('dashboard') }}">Car Manager</a>
     <div>
-      <a class="btn btn-outline-light me-2" href="/">Strona główna</a>
-      <a class="btn btn-outline-light me-2" href="/cars">Samochody</a>
-      <a class="btn btn-outline-light" href="/about">O aplikacji</a>
-  </div>
+      <a class="btn btn-outline-light me-2" href="{{ url_for('dashboard') }}">Strona główna</a>
+      <a class="btn btn-outline-light me-2" href="{{ url_for('list_cars') }}">Samochody</a>
+      <a class="btn btn-outline-light" href="{{ url_for('about') }}">O aplikacji</a>
+    </div>
+  </div> <!-- 👈 domknięcie .container -->
 </nav>
+
 <main class="container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ 'info' if cat=='message' else cat }} mb-3">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
   {% block content %}{% endblock %}
 </main>
+
+<!-- Trzymaj JS na dole body -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>

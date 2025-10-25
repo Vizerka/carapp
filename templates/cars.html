@@ -37,8 +37,15 @@
         <td>{{ last_odo and (last_odo.km ~ ' km') or '—' }}</td>
 
         <td class="text-end">
-          <a class="btn btn-sm btn-primary" href="{{ url_for('car_detail', car_id=c.id) }}">Szczegóły</a>
-        </td>
+  <a class="btn btn-sm btn-primary me-1" href="{{ url_for('car_detail', car_id=c.id) }}">Szczegóły</a>
+  <form method="post"
+        action="{{ url_for('car_delete', car_id=c.id) }}"
+        class="d-inline"
+        onsubmit="return confirm('Usunąć ten samochód wraz z całą historią?')">
+    <button class="btn btn-sm btn-outline-danger">Usuń</button>
+  </form>
+</td>
+
       </tr>
     {% endfor %}
   </tbody>

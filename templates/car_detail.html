@@ -8,9 +8,50 @@
   <li><strong>1. rejestracja:</strong> {{ car.first_registration or '—' }}</li>
 </ul>
 
+{# ---------- WYKRES PRZEBIEGU (tylko gdy są dane) ---------- #}
+{% set has_odo = (odo_values | length) > 0 %}
+
+{% if has_odo %}
+<div class="card p-3 mb-3">
+  <h5 class="mb-3">Wykres przebiegu</h5>
+  <canvas id="odoChart"
+          style="height: 240px; max-height: 240px;"
+          data-labels='{{ odo_labels | tojson }}'
+          data-values='{{ odo_values | tojson }}'></canvas>
+</div>
+
+<script>
+  // Rysuj wykres dopiero po pełnym załadowaniu (Chart.js jest w base.html)
+  window.addEventListener('load', function () {
+    const el = document.getElementById('odoChart');
+    if (!el) return;
+    const labels = JSON.parse(el.dataset.labels || '[]');
+    const values = JSON.parse(el.dataset.values || '[]');
+    if (!labels.length) return;
+
+    const ctx = el.getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: { labels: labels, datasets: [{ label: 'Przebieg [km]', data: values, tension: 0.2 }] },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: true } },
+        scales: { y: { beginAtZero: false } }
+      }
+    });
+  });
+</script>
+{% else %}
+<div class="alert alert-secondary p-3 mb-3">
+  Brak danych do wykresu — dodaj pierwszy wpis przebiegu poniżej.
+</div>
+{% endif %}
+
 <div class="row g-3">
+  <!-- PRZEBIEG -->
   <div class="col-md-4">
-    <div class="card p-3">
+    <div class="card p-3 h-100">
       <h5 class="mb-3">Dodaj przebieg</h5>
       <form method="post" action="{{ url_for('odometer_new', car_id=car.id) }}" class="vstack gap-2">
         <input type="date" name="date" class="form-control" required>
@@ -20,9 +61,17 @@
       </form>
       <hr>
       <h6>Historia przebiegu</h6>
-      <ul class="small">
+      <ul class="small list-unstyled">
         {% for e in odo %}
-          <li>{{ e.date }} — {{ e.km }} km {% if e.note %} <em>({{ e.note }})</em>{% endif %}</li>
+          <li class="d-flex justify-content-between align-items-center">
+            <span>{{ e.date }} — {{ e.km }} km {% if e.note %}<em>({{ e.note }})</em>{% endif %}</span>
+            <span class="d-flex gap-2">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('odometer_edit', entry_id=e.id) }}">Edytuj</a>
+              <form method="post" action="{{ url_for('odometer_delete', entry_id=e.id) }}" class="d-inline" onsubmit="return confirm('Usunąć wpis przebiegu?')">
+                <button class="btn btn-sm btn-outline-danger">Usuń</button>
+              </form>
+            </span>
+          </li>
         {% else %}
           <li>Brak wpisów.</li>
         {% endfor %}
@@ -30,21 +79,30 @@
     </div>
   </div>
 
+  <!-- OC -->
   <div class="col-md-4">
-    <div class="card p-3">
+    <div class="card p-3 h-100">
       <h5 class="mb-3">Dodaj polisę OC</h5>
       <form method="post" action="{{ url_for('insurance_new', car_id=car.id) }}" class="vstack gap-2">
-        <input type="date" name="valid_from" class="form-control" placeholder="od" required>
-        <input type="date" name="valid_to" class="form-control" placeholder="do" required>
+        <input type="date" name="valid_from" class="form-control" required>
+        <input type="date" name="valid_to" class="form-control" required>
         <input type="text" name="insurer" class="form-control" placeholder="ubezpieczyciel">
         <input type="text" name="policy_no" class="form-control" placeholder="nr polisy">
         <button class="btn btn-primary">Zapisz</button>
       </form>
       <hr>
       <h6>Polisy OC</h6>
-      <ul class="small">
+      <ul class="small list-unstyled">
         {% for p in oc %}
-          <li>{{ p.valid_from }} → {{ p.valid_to }} {% if p.insurer %}- {{ p.insurer }}{% endif %} {% if p.policy_no %}(#{{ p.policy_no }}){% endif %}</li>
+          <li class="d-flex justify-content-between align-items-center">
+            <span>{{ p.valid_from }} → {{ p.valid_to }}{% if p.insurer %} — {{ p.insurer }}{% endif %}{% if p.policy_no %} ({{ p.policy_no }}){% endif %}</span>
+            <span class="d-flex gap-2">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('insurance_edit', policy_id=p.id) }}">Edytuj</a>
+              <form method="post" action="{{ url_for('insurance_delete', policy_id=p.id) }}" class="d-inline" onsubmit="return confirm('Usunąć polisę?')">
+                <button class="btn btn-sm btn-outline-danger">Usuń</button>
+              </form>
+            </span>
+          </li>
         {% else %}
           <li>Brak wpisów.</li>
         {% endfor %}
@@ -52,12 +110,13 @@
     </div>
   </div>
 
+  <!-- PRZEGLĄD -->
   <div class="col-md-4">
-    <div class="card p-3">
+    <div class="card p-3 h-100">
       <h5 class="mb-3">Dodaj przegląd</h5>
       <form method="post" action="{{ url_for('inspection_new', car_id=car.id) }}" class="vstack gap-2">
-        <input type="date" name="date" class="form-control" placeholder="data badania" required>
-        <input type="date" name="valid_to" class="form-control" placeholder="ważność do" required>
+        <input type="date" name="date" class="form-control" required>
+        <input type="date" name="valid_to" class="form-control" required>
         <input type="text" name="result" class="form-control" placeholder="wynik (np. pozytywny)">
         <input type="text" name="station" class="form-control" placeholder="stacja">
         <input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)">
@@ -65,9 +124,17 @@
       </form>
       <hr>
       <h6>Przeglądy</h6>
-      <ul class="small">
+      <ul class="small list-unstyled">
         {% for i in ti %}
-          <li>{{ i.date }} → {{ i.valid_to }} {% if i.result %}- {{ i.result }}{% endif %} {% if i.station %} @ {{ i.station }}{% endif %}</li>
+          <li class="d-flex justify-content-between align-items-center">
+            <span>{{ i.date }} → {{ i.valid_to }}{% if i.result %} — {{ i.result }}{% endif %}{% if i.station %} @ {{ i.station }}{% endif %}</span>
+            <span class="d-flex gap-2">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('inspection_edit', ins_id=i.id) }}">Edytuj</a>
+              <form method="post" action="{{ url_for('inspection_delete', ins_id=i.id) }}" class="d-inline" onsubmit="return confirm('Usunąć przegląd?')">
+                <button class="btn btn-sm btn-outline-danger">Usuń</button>
+              </form>
+            </span>
+          </li>
         {% else %}
           <li>Brak wpisów.</li>
         {% endfor %}
@@ -76,7 +143,10 @@
   </div>
 </div>
 
-<div class="mt-3">
+<div class="mt-3 d-flex gap-2">
   <a class="btn btn-secondary" href="{{ url_for('list_cars') }}">⟵ Powrót</a>
+  <form method="post" action="{{ url_for('car_delete', car_id=car.id) }}" onsubmit="return confirm('Na pewno usunąć to auto i całą historię?')">
+    <button class="btn btn-outline-danger">Usuń auto</button>
+  </form>
 </div>
 {% endblock %}
