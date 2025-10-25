@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Edytuj przegląd — {{ car.make }} {{ car.model }}{% endblock %}
+{% block content %}
+<h2>Edytuj przegląd — {{ car.make }} {{ car.model }}</h2>
+<form method="post" class="row g-3">
+  <div class="col-md-3">
+    <label class="form-label">Data badania</label>
+    <input type="date" name="date" class="form-control" value="{{ ins.date }}" required>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Ważność do</label>
+    <input type="date" name="valid_to" class="form-control" value="{{ ins.valid_to }}" required>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Wynik</label>
+    <input type="text" name="result" class="form-control" value="{{ ins.result or '' }}">
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Stacja</label>
+    <input type="text" name="station" class="form-control" value="{{ ins.station or '' }}">
+  </div>
+  <div class="col-12">
+    <label class="form-label">Notatka</label>
+    <input type="text" name="note" class="form-control" value="{{ ins.note or '' }}">
+  </div>
+  <div class="col-12 d-flex gap-2">
+    <button class="btn btn-primary">Zapisz</button>
+    <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=car.id) }}">Anuluj</a>
+  </div>
+</form>
+{% endblock %}

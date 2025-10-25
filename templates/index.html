@@ -1,15 +1,69 @@
 {% extends "base.html" %}
-{% block title %}Strona główna — Car Manager{% endblock %}
+{% block title %}Dashboard — Car Manager{% endblock %}
 {% block content %}
-  <h1 class="mb-3">Witaj w Car Managerze 👋</h1>
-<p>To Twoja pierwsza strona renderowana szablonem Jinja2. </p>
-<p>Użyj nawigacji powyżej, aby przejść do innych sekcji aplikacji.</p>
-<p>Miłego zarządzania samochodami!</p>
-<p>🚗💨</p>
-<p>Autor: Wiktoria</p>
-<h5>Źródło: <a href="https://github.com/WiktoriaKowalska/car_manager">https://github.com/WiktoriaKowalska/car_manager</a></h5>
-<p>Ikony: <a href="https://www.flaticon.com/free-icons/car" title="car icons">Car icons created by Freepik - Flaticon</a></p>
-<div class="mt-4">
-    <img src="{{ url_for('static', filename='car_image.jpg') }}" alt="Car Image" class="img-fluid rounded">
+<h1 class="mb-3">Dashboard</h1>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card p-3">
+      <h5>Twoje auta</h5>
+      <p class="display-6 mb-0">{{ cars_count }}</p>
+      <a class="btn btn-sm btn-primary mt-2" href="{{ url_for('list_cars') }}">Przejdź do listy</a>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="card p-3">
+      <h5>Najbliższe terminy ({{ upcoming_days }} dni)</h5>
+      <div class="row">
+        <div class="col-md-6">
+          <h6 class="mt-2">OC</h6>
+          <ul class="small">
+            {% for c, d in oc_upcoming %}
+              {% set dl = d|days_left %}
+              <li>{{ c.make }} {{ c.model }} — {{ d }}{% if dl is not none %} (za {{ dl }} dni){% endif %}</li>
+            {% else %}
+              <li>Brak.</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <h6 class="mt-2">Przegląd</h6>
+          <ul class="small">
+            {% for c, d in ti_upcoming %}
+              {% set dl = d|days_left %}
+              <li>{{ c.make }} {{ c.model }} — {{ d }}{% if dl is not none %} (za {{ dl }} dni){% endif %}</li>
+            {% else %}
+              <li>Brak.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <hr>
+      <div class="row">
+        <div class="col-md-6">
+          <h6 class="text-danger">OC po terminie</h6>
+          <ul class="small">
+            {% for c, d in oc_expired %}
+              <li>{{ c.make }} {{ c.model }} — {{ d }}</li>
+            {% else %}
+              <li>Brak.</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="col-md-6">
+          <h6 class="text-danger">Przegląd po terminie</h6>
+          <ul class="small">
+            {% for c, d in ti_expired %}
+              <li>{{ c.make }} {{ c.model }} — {{ d }}</li>
+            {% else %}
+              <li>Brak.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
+<a class="btn btn-success" href="{{ url_for('car_new') }}">+ Dodaj auto</a>
 {% endblock %}
