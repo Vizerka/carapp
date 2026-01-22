@@ -1,52 +1,153 @@
+{# templates/car_detail.html #}
 {% extends "base.html" %}
 {% block title %}{{ car.make }} {{ car.model }}{% endblock %}
+
 {% block content %}
 <h2 class="mb-3">{{ car.make }} {{ car.model }} ({{ car.year or '—' }})</h2>
+
 <ul class="list-unstyled">
   <li><strong>Rej.:</strong> {{ car.reg_number or '—' }}</li>
   <li><strong>VIN:</strong> {{ car.vin or '—' }}</li>
   <li><strong>1. rejestracja:</strong> {{ car.first_registration or '—' }}</li>
 </ul>
 
+{# ---------- KAFLE PODSUMOWANIA ---------- #}
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card p-3 h-100">
+      <div class="text-muted small">Paliwo</div>
+      <div class="fs-4 fw-semibold">
+        {% if fuel_total is not none %}
+          {{ "%.2f"|format(fuel_total|float) }} PLN
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div class="text-muted small">suma z tankowań z kosztem</div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card p-3 h-100">
+      <div class="text-muted small">Serwis</div>
+      <div class="fs-4 fw-semibold">
+        {% if service_total is not none %}
+          {{ "%.2f"|format(service_total|float) }} PLN
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div class="text-muted small">suma wpisów serwisowych</div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card p-3 h-100">
+      <div class="text-muted small">Łącznie</div>
+      <div class="fs-4 fw-semibold">
+        {% if total_cost is not none %}
+          {{ "%.2f"|format(total_cost|float) }} PLN
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div class="text-muted small">paliwo + serwis</div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card p-3 h-100">
+      <div class="text-muted small">Koszt / km</div>
+      <div class="fs-4 fw-semibold">
+        {% if cost_per_km is not none %}
+          {{ "%.2f"|format(cost_per_km|float) }} PLN/km
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div class="text-muted small">
+        {% if distance %}
+          dystans: {{ distance }} km
+        {% else %}
+          dystans: —
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
 {# ---------- WYKRES PRZEBIEGU (tylko gdy są dane) ---------- #}
 {% set has_odo = (odo_values | length) > 0 %}
-
 {% if has_odo %}
 <div class="card p-3 mb-3">
   <h5 class="mb-3">Wykres przebiegu</h5>
-  <canvas id="odoChart"
-          style="height: 240px; max-height: 240px;"
-          data-labels='{{ odo_labels | tojson }}'
-          data-values='{{ odo_values | tojson }}'></canvas>
+  <div style="height:240px;">
+    <canvas id="odoChart"
+            data-labels='{{ odo_labels | tojson }}'
+            data-values='{{ odo_values | tojson }}'></canvas>
+  </div>
 </div>
-
-<script>
-  // Rysuj wykres dopiero po pełnym załadowaniu (Chart.js jest w base.html)
-  window.addEventListener('load', function () {
-    const el = document.getElementById('odoChart');
-    if (!el) return;
-    const labels = JSON.parse(el.dataset.labels || '[]');
-    const values = JSON.parse(el.dataset.values || '[]');
-    if (!labels.length) return;
-
-    const ctx = el.getContext('2d');
-    new Chart(ctx, {
-      type: 'line',
-      data: { labels: labels, datasets: [{ label: 'Przebieg [km]', data: values, tension: 0.2 }] },
-      options: {
-        responsive: true,
-        interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { display: true } },
-        scales: { y: { beginAtZero: false } }
-      }
-    });
-  });
-</script>
 {% else %}
 <div class="alert alert-secondary p-3 mb-3">
   Brak danych do wykresu — dodaj pierwszy wpis przebiegu poniżej.
 </div>
 {% endif %}
+
+{# ---------- WYKRES SPALANIA (pełny→pełny) ---------- #}
+{% set has_cons = (cons_values | length) > 0 %}
+{% if has_cons %}
+<div class="card p-3 mb-3">
+  <h5 class="mb-3">Spalanie (pełny → pełny) [L/100km]</h5>
+  <div style="height:240px;">
+    <canvas id="consChart"
+            data-labels='{{ cons_labels | tojson }}'
+            data-values='{{ cons_values | tojson }}'></canvas>
+  </div>
+  <div class="form-text mt-2">
+    Liczone tylko dla tankowań oznaczonych jako <strong>pełny bak</strong>.
+  </div>
+</div>
+{% else %}
+<div class="alert alert-secondary p-3 mb-3">
+  Brak danych do wykresu spalania — dodaj co najmniej <strong>dwa</strong> tankowania “pełny bak”.
+</div>
+{% endif %}
+
+<script>
+  window.addEventListener('load', function () {
+    function drawLineChart(canvasId, labelText) {
+      const el = document.getElementById(canvasId);
+      if (!el) return;
+
+      const labels = JSON.parse(el.dataset.labels || '[]');
+      const values = JSON.parse(el.dataset.values || '[]');
+      if (!labels.length) return;
+
+      const ctx = el.getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: labelText,
+            data: values,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: true } },
+          scales: { y: { beginAtZero: false } }
+        }
+      });
+    }
+
+    drawLineChart('odoChart', 'Przebieg [km]');
+    drawLineChart('consChart', 'L/100km');
+  });
+</script>
 
 <div class="row g-3">
   <!-- PRZEBIEG -->
@@ -59,6 +160,7 @@
         <input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)">
         <button class="btn btn-primary">Zapisz</button>
       </form>
+
       <hr>
       <h6>Historia przebiegu</h6>
       <ul class="small list-unstyled">
@@ -67,7 +169,8 @@
             <span>{{ e.date }} — {{ e.km }} km {% if e.note %}<em>({{ e.note }})</em>{% endif %}</span>
             <span class="d-flex gap-2">
               <a class="btn btn-sm btn-outline-primary" href="{{ url_for('odometer_edit', entry_id=e.id) }}">Edytuj</a>
-              <form method="post" action="{{ url_for('odometer_delete', entry_id=e.id) }}" class="d-inline" onsubmit="return confirm('Usunąć wpis przebiegu?')">
+              <form method="post" action="{{ url_for('odometer_delete', entry_id=e.id) }}" class="d-inline"
+                    onsubmit="return confirm('Usunąć wpis przebiegu?')">
                 <button class="btn btn-sm btn-outline-danger">Usuń</button>
               </form>
             </span>
@@ -90,15 +193,21 @@
         <input type="text" name="policy_no" class="form-control" placeholder="nr polisy">
         <button class="btn btn-primary">Zapisz</button>
       </form>
+
       <hr>
       <h6>Polisy OC</h6>
       <ul class="small list-unstyled">
         {% for p in oc %}
           <li class="d-flex justify-content-between align-items-center">
-            <span>{{ p.valid_from }} → {{ p.valid_to }}{% if p.insurer %} — {{ p.insurer }}{% endif %}{% if p.policy_no %} ({{ p.policy_no }}){% endif %}</span>
+            <span>
+              {{ p.valid_from }} → {{ p.valid_to }}
+              {% if p.insurer %} — {{ p.insurer }}{% endif %}
+              {% if p.policy_no %} ({{ p.policy_no }}){% endif %}
+            </span>
             <span class="d-flex gap-2">
               <a class="btn btn-sm btn-outline-primary" href="{{ url_for('insurance_edit', policy_id=p.id) }}">Edytuj</a>
-              <form method="post" action="{{ url_for('insurance_delete', policy_id=p.id) }}" class="d-inline" onsubmit="return confirm('Usunąć polisę?')">
+              <form method="post" action="{{ url_for('insurance_delete', policy_id=p.id) }}" class="d-inline"
+                    onsubmit="return confirm('Usunąć polisę?')">
                 <button class="btn btn-sm btn-outline-danger">Usuń</button>
               </form>
             </span>
@@ -122,15 +231,21 @@
         <input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)">
         <button class="btn btn-primary">Zapisz</button>
       </form>
+
       <hr>
       <h6>Przeglądy</h6>
       <ul class="small list-unstyled">
         {% for i in ti %}
           <li class="d-flex justify-content-between align-items-center">
-            <span>{{ i.date }} → {{ i.valid_to }}{% if i.result %} — {{ i.result }}{% endif %}{% if i.station %} @ {{ i.station }}{% endif %}</span>
+            <span>
+              {{ i.date }} → {{ i.valid_to }}
+              {% if i.result %} — {{ i.result }}{% endif %}
+              {% if i.station %} @ {{ i.station }}{% endif %}
+            </span>
             <span class="d-flex gap-2">
               <a class="btn btn-sm btn-outline-primary" href="{{ url_for('inspection_edit', ins_id=i.id) }}">Edytuj</a>
-              <form method="post" action="{{ url_for('inspection_delete', ins_id=i.id) }}" class="d-inline" onsubmit="return confirm('Usunąć przegląd?')">
+              <form method="post" action="{{ url_for('inspection_delete', ins_id=i.id) }}" class="d-inline"
+                    onsubmit="return confirm('Usunąć przegląd?')">
                 <button class="btn btn-sm btn-outline-danger">Usuń</button>
               </form>
             </span>
@@ -143,9 +258,324 @@
   </div>
 </div>
 
+{# ---------- TANKOWANIA ---------- #}
+<div class="card p-3 mt-3">
+  <h5 class="mb-3">Tankowania ⛽</h5>
+
+  <form method="post" action="{{ url_for('fuel_new', car_id=car.id) }}" class="row g-2 mb-3">
+    <div class="col-md-2">
+      <input type="date" name="date" class="form-control" required>
+    </div>
+    <div class="col-md-2">
+      <input type="number" name="km" class="form-control" placeholder="km" min="0" step="1" required>
+    </div>
+    <div class="col-md-2">
+      <input type="text" name="liters" class="form-control" placeholder="litry (np. 42,5)" required>
+    </div>
+    <div class="col-md-2">
+      <input type="text" name="total_cost" class="form-control" placeholder="koszt PLN (opc.)">
+    </div>
+    <div class="col-md-2">
+      <input type="text" name="price_per_l" class="form-control" placeholder="PLN/L (opc.)">
+    </div>
+    <div class="col-md-2">
+      <input type="text" name="station" class="form-control" placeholder="stacja (opc.)">
+    </div>
+
+    <div class="col-md-3">
+      <select name="full_tank" class="form-select">
+        <option value="1" selected>Pełny bak</option>
+        <option value="0">Niepełny</option>
+      </select>
+    </div>
+    <div class="col-md-9">
+      <input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)">
+    </div>
+
+    <div class="col-12">
+      <button class="btn btn-primary">Dodaj tankowanie</button>
+      <div class="form-text">
+        Spalanie liczy się tylko dla tankowań oznaczonych jako <strong>Pełny bak</strong> (pełny → pełny).
+      </div>
+    </div>
+  </form>
+
+  <ul class="list-unstyled small">
+    {% for f in fills %}
+      <li class="d-flex justify-content-between align-items-center border-top py-2">
+        <span>
+          <strong>{{ f.date }}</strong> — {{ f.km }} km
+          — {{ f.liters }} L
+          {% if f.total_cost %} — {{ f.total_cost }} PLN{% endif %}
+          {% if f.price_per_l %} — {{ f.price_per_l }} PLN/L{% endif %}
+          {% if f.station %} — <em>{{ f.station }}</em>{% endif %}
+          {% if f.full_tank %}
+            — <span class="badge text-bg-success">pełny</span>
+          {% else %}
+            — <span class="badge text-bg-secondary">niepełny</span>
+          {% endif %}
+          {% if f.note %} — {{ f.note }}{% endif %}
+        </span>
+        <span class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('fuel_edit', fill_id=f.id) }}">Edytuj</a>
+            <form method="post" action="{{ url_for('fuel_delete', fill_id=f.id) }}"onsubmit="return confirm('Usunąć tankowanie?')">
+              <button class="btn btn-sm btn-outline-danger">Usuń</button>
+            </form>
+</span>
+      </li>
+    {% else %}
+      <li>Brak tankowań.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+{# ---------- INTERWAŁY SERWISOWE + PRZYPOMINANIE ---------- #}
+<div class="card p-3 mt-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Interwały serwisowe ⏱️</h5>
+    <div class="text-muted small">
+      {% if current_km is not none %}Aktualny przebieg: <strong>{{ current_km }} km</strong>{% else %}Aktualny przebieg: —{% endif %}
+    </div>
+  </div>
+
+  <hr class="my-3">
+
+  <div class="row g-2 mb-3">
+    <div class="col-12">
+      <h6 class="mb-2">Przypominajki</h6>
+      <ul class="list-unstyled small mb-0">
+        {% for iv, c in interval_reminders %}
+          {% set badge = 'secondary' %}
+          {% if c.status == 'due' %}{% set badge = 'danger' %}
+          {% elif c.status == 'soon' %}{% set badge = 'warning' %}
+          {% elif c.status == 'ok' %}{% set badge = 'success' %}
+          {% endif %}
+
+          <li class="d-flex justify-content-between align-items-center border-top py-2">
+            <span>
+              <span class="badge text-bg-{{ badge }}">{{ c.status }}</span>
+              <strong class="ms-2">{{ iv.name }}</strong>
+
+              {% if c.next_km is not none %}
+                — następne: {{ c.next_km }} km
+                {% if c.km_left is not none %} ({{ c.km_left }} km){% endif %}
+              {% endif %}
+
+              {% if c.next_date is not none %}
+                — {{ c.next_date }}
+                {% if c.days_left is not none %} ({{ c.days_left }} dni){% endif %}
+              {% endif %}
+
+              {% if iv.note %} — <em>{{ iv.note }}</em>{% endif %}
+            </span>
+
+            <span class="d-flex gap-2">
+              <form method="post" action="{{ url_for('interval_mark_done', interval_id=iv.id) }}" class="d-flex gap-2">
+                <input type="date" name="date" class="form-control form-control-sm" style="max-width: 150px;">
+                <input type="number" name="km" class="form-control form-control-sm" placeholder="km"
+                       style="max-width: 120px;" min="0" step="1">
+                <button class="btn btn-sm btn-outline-success">Zrobione</button>
+              </form>
+
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('interval_edit', interval_id=iv.id) }}">Edytuj</a>
+
+              <form method="post" action="{{ url_for('interval_delete', interval_id=iv.id) }}"
+                    onsubmit="return confirm('Usunąć interwał?')">
+                <button class="btn btn-sm btn-outline-danger">Usuń</button>
+              </form>
+            </span>
+          </li>
+        {% else %}
+          <li class="text-muted">Brak interwałów — dodaj pierwszy poniżej.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <hr class="my-3">
+
+  <h6 class="mb-2">Dodaj interwał</h6>
+  <form method="post" action="{{ url_for('interval_new', car_id=car.id) }}" class="row g-2">
+    <div class="col-md-4">
+      <input name="name" class="form-control" placeholder="np. Olej + filtr" required>
+    </div>
+    <div class="col-md-2">
+      <input name="interval_km" type="number" class="form-control" placeholder="co ile km">
+    </div>
+    <div class="col-md-2">
+      <input name="interval_days" type="number" class="form-control" placeholder="co ile dni">
+    </div>
+    <div class="col-md-2">
+      <input name="last_done_km" type="number" class="form-control" placeholder="ostatnio km">
+    </div>
+    <div class="col-md-2">
+      <input name="last_done_date" type="date" class="form-control" placeholder="ostatnio data">
+    </div>
+    <div class="col-12">
+      <input name="note" class="form-control" placeholder="notatka (opcjonalnie)">
+    </div>
+    <div class="col-12">
+      <button class="btn btn-primary">Dodaj interwał</button>
+    </div>
+  </form>
+</div>
+
+
+{# ---------- SERWIS / NAPRAWY ---------- #}
+<div class="card p-3 mt-3">
+  <h5 class="mb-3">Serwis / naprawy</h5>
+
+  <form method="post" action="{{ url_for('service_new', car_id=car.id) }}" class="row g-2 mb-3">
+    <div class="col-md-2">
+      <input type="date" name="date" class="form-control" required>
+    </div>
+    <div class="col-md-2">
+      <input type="number" name="km" class="form-control" placeholder="km" min="0" step="1">
+    </div>
+    <div class="col-md-3">
+      <input type="text" name="title" class="form-control" placeholder="np. Olej + filtr" required>
+    </div>
+    <div class="col-md-2">
+      <input type="text" name="cost" class="form-control" placeholder="koszt PLN">
+    </div>
+    <div class="col-md-3">
+      <input type="text" name="vendor" class="form-control" placeholder="warsztat / sklep">
+    </div>
+    <div class="col-12">
+      <input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)">
+    </div>
+    <div class="col-12">
+      <textarea name="description" class="form-control" rows="2" placeholder="opis (opcjonalnie)"></textarea>
+    </div>
+    <div class="col-12">
+      <button class="btn btn-primary">Dodaj serwis</button>
+    </div>
+  </form>
+
+  <ul class="list-unstyled small">
+    {% for s in services %}
+      <li class="d-flex justify-content-between align-items-center border-top py-2">
+        <span>
+          <strong>{{ s.date }}</strong>
+          {% if s.km %} — {{ s.km }} km{% endif %}
+          — {{ s.title }}
+          {% if s.cost %} — {{ s.cost }} PLN{% endif %}
+          {% if s.vendor %} — <em>{{ s.vendor }}</em>{% endif %}
+          {% if s.note %} — {{ s.note }}{% endif %}
+        </span>
+        <span class="d-flex gap-2">
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('service_edit', service_id=s.id) }}">Edytuj</a>
+          <form method="post" action="{{ url_for('service_delete', service_id=s.id) }}"
+                onsubmit="return confirm('Usunąć wpis serwisowy?')">
+            <button class="btn btn-sm btn-outline-danger">Usuń</button>
+          </form>
+        </span>
+      </li>
+    {% else %}
+      <li>Brak wpisów serwisowych.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+{# ---------- DOKUMENTY ---------- #}
+<div class="card p-3 mt-3">
+  <h5 class="mb-3">Dokumenty</h5>
+
+  <form method="post"
+        action="{{ url_for('document_upload', car_id=car.id) }}"
+        enctype="multipart/form-data"
+        class="row g-2 mb-3">
+    <div class="col-md-4">
+      <input type="file" name="file" class="form-control" required accept=".pdf,image/*">
+    </div>
+    <div class="col-md-3">
+      <input type="text" name="category" class="form-control" placeholder="kategoria (np. OC, Faktura)">
+    </div>
+    <div class="col-md-3">
+      <input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)">
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-primary w-100">Dodaj</button>
+    </div>
+    <div class="col-12">
+      <div class="form-text">Dozwolone: pdf, jpg, jpeg, png, webp (max 16MB).</div>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0">
+      <thead>
+        <tr>
+          <th style="width: 84px;">Podgląd</th>
+          <th>Plik</th>
+          <th style="width: 180px;">Kategoria</th>
+          <th>Notatka</th>
+          <th style="width: 260px;" class="text-end">Akcje</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in docs %}
+          {% set ext = (d.original_name.split('.')[-1] | lower) %}
+          {% set is_img = ext in ['jpg','jpeg','png','webp'] %}
+          {% set is_pdf = ext == 'pdf' %}
+
+          <tr>
+            <td>
+              {% if is_img %}
+                <a target="_blank" href="{{ url_for('document_view', doc_id=d.id) }}">
+                  <img src="{{ url_for('document_view', doc_id=d.id) }}"
+                       alt="podgląd"
+                       class="img-thumbnail"
+                       style="width: 72px; height: 72px; object-fit: cover;">
+                </a>
+              {% elif is_pdf %}
+                <a class="btn btn-sm btn-outline-primary"
+                   target="_blank"
+                   href="{{ url_for('document_view', doc_id=d.id) }}">PDF</a>
+              {% else %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+
+            <td>
+              <div class="fw-semibold">{{ d.original_name }}</div>
+              <div class="text-muted small">{{ d.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            </td>
+
+            <td>{{ d.category or '—' }}</td>
+            <td>{{ d.note or '—' }}</td>
+
+            <td class="text-end">
+              <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
+                <a class="btn btn-sm btn-outline-primary" target="_blank"
+                   href="{{ url_for('document_view', doc_id=d.id) }}">Podgląd</a>
+
+                <a class="btn btn-sm btn-outline-secondary"
+                   href="{{ url_for('document_download', doc_id=d.id) }}">Pobierz</a>
+
+                <a class="btn btn-sm btn-outline-primary"
+                   href="{{ url_for('document_edit', doc_id=d.id) }}">Edytuj</a>
+
+                <form method="post"
+                      action="{{ url_for('document_delete', doc_id=d.id) }}"
+                      onsubmit="return confirm('Usunąć dokument?')">
+                  <button class="btn btn-sm btn-outline-danger">Usuń</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="text-muted">Brak dokumentów.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <div class="mt-3 d-flex gap-2">
   <a class="btn btn-secondary" href="{{ url_for('list_cars') }}">⟵ Powrót</a>
-  <form method="post" action="{{ url_for('car_delete', car_id=car.id) }}" onsubmit="return confirm('Na pewno usunąć to auto i całą historię?')">
+  <form method="post" action="{{ url_for('car_delete', car_id=car.id) }}"
+        onsubmit="return confirm('Na pewno usunąć to auto i całą historię?')">
     <button class="btn btn-outline-danger">Usuń auto</button>
   </form>
 </div>

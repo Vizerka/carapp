@@ -38,6 +38,7 @@
 
         <td class="text-end">
   <a class="btn btn-sm btn-primary me-1" href="{{ url_for('car_detail', car_id=c.id) }}">Szczegóły</a>
+  <a class="btn btn-sm btn-outline-primary me-1" href="{{ url_for('car_edit', car_id=c.id) }}">Edytuj</a>
   <form method="post"
         action="{{ url_for('car_delete', car_id=c.id) }}"
         class="d-inline"

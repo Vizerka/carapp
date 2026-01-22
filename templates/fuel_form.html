@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Edytuj tankowanie — {{ car.make }} {{ car.model }}{% endblock %}
+{% block content %}
+<h2>Edytuj tankowanie — {{ car.make }} {{ car.model }}</h2>
+
+<form method="post" class="row g-3">
+  <div class="col-md-3">
+    <label class="form-label">Data</label>
+    <input type="date" name="date" class="form-control" value="{{ f.date }}" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Przebieg [km]</label>
+    <input type="number" name="km" class="form-control" min="0" step="1" value="{{ f.km or '' }}">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Litry</label>
+    <input type="text" name="liters" class="form-control" value="{{ f.liters }}" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Koszt całkowity [PLN]</label>
+    <input type="text" name="total_cost" class="form-control" value="{{ f.total_cost or '' }}">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Cena / L [PLN]</label>
+    <input type="text" name="price_per_l" class="form-control" value="{{ f.price_per_l or '' }}">
+    <div class="form-text">Możesz zostawić puste — policzy z kosztu i litrów.</div>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Rodzaj</label>
+    <input type="text" name="fuel_type" class="form-control" value="{{ f.fuel_type or '' }}" placeholder="PB95 / ON / LPG">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Stacja</label>
+    <input type="text" name="station" class="form-control" value="{{ f.station or '' }}">
+  </div>
+
+  <div class="col-md-3 d-flex align-items-end">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="full_tank" id="full_tank" {% if f.full_tank %}checked{% endif %}>
+      <label class="form-check-label" for="full_tank">Do pełna</label>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <label class="form-label">Notatka</label>
+    <input type="text" name="note" class="form-control" value="{{ f.note or '' }}">
+  </div>
+
+  <div class="col-12 d-flex gap-2">
+    <button class="btn btn-primary">Zapisz</button>
+    <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=car.id) }}">Anuluj</a>
+  </div>
+</form>
+{% endblock %}

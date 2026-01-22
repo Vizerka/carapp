@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Backup — Car Manager{% endblock %}
+{% block content %}
+<h1 class="mb-3">Backup danych</h1>
+
+<div class="card p-3 mb-3">
+  <h5 class="mb-2">Eksport</h5>
+  <p class="text-muted small mb-2">Pobierze ZIP: backup.json + folder uploads/ (dokumenty).</p>
+  <a class="btn btn-primary" href="{{ url_for('backup_export_zip') }}">Pobierz backup (.zip)</a>
+</div>
+
+<div class="card p-3">
+  <h5 class="mb-2">Import</h5>
+  <p class="text-muted small mb-2">Wgraj ZIP z eksportu. Import działa w trybie „merge” (dokleja dane). </p>
+
+  <form method="post" action="{{ url_for('backup_import') }}" enctype="multipart/form-data" class="row g-2">
+    <div class="col-md-8">
+      <input class="form-control" type="file" name="file" accept=".zip" required>
+    </div>
+    <div class="col-md-4">
+      <button class="btn btn-success w-100">Importuj</button>
+    </div>
+    <div class="col-12">
+      <div class="form-text">
+        Jeśli w bazie już istnieje auto o tym samym VIN (albo numerze rejestracyjnym), wpisy zostaną dopięte do istniejącego auta.
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

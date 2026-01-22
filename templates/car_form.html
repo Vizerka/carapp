@@ -1,35 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Nowe auto{% endblock %}
+{% set is_edit = car is not none %}
+{% block title %}{{ 'Edytuj auto' if is_edit else 'Nowe auto' }}{% endblock %}
+
 {% block content %}
-<h2>Nowe auto</h2>
+<h2>{{ 'Edytuj auto' if is_edit else 'Nowe auto' }}</h2>
+
 <form method="post" class="row g-3">
   <div class="col-md-4">
     <label class="form-label">Marka</label>
-    <input name="make" class="form-control" required>
+    <input name="make" class="form-control" required value="{{ car.make if is_edit else '' }}">
   </div>
+
   <div class="col-md-4">
     <label class="form-label">Model</label>
-    <input name="model" class="form-control" required>
+    <input name="model" class="form-control" required value="{{ car.model if is_edit else '' }}">
   </div>
+
   <div class="col-md-2">
     <label class="form-label">Rocznik</label>
-    <input name="year" type="number" class="form-control">
+    <input name="year" type="number" class="form-control" value="{{ car.year if is_edit and car.year else '' }}">
   </div>
+
   <div class="col-md-4">
     <label class="form-label">Numer VIN</label>
-    <input name="vin" class="form-control">
+    <input name="vin" class="form-control" value="{{ car.vin if is_edit and car.vin else '' }}">
   </div>
+
   <div class="col-md-4">
     <label class="form-label">Numer rejestracyjny</label>
-    <input name="reg_number" class="form-control">
+    <input name="reg_number" class="form-control" value="{{ car.reg_number if is_edit and car.reg_number else '' }}">
   </div>
+
   <div class="col-md-4">
     <label class="form-label">Data pierwszej rejestracji</label>
-    <input name="first_registration" type="date" class="form-control">
+    <input name="first_registration" type="date" class="form-control"
+           value="{{ car.first_registration.isoformat() if is_edit and car.first_registration else '' }}">
   </div>
-  <div class="col-12">
+
+  <div class="col-12 d-flex gap-2">
     <button class="btn btn-primary" type="submit">Zapisz</button>
-    <a class="btn btn-secondary" href="{{ url_for('list_cars') }}">Anuluj</a>
+    {% if is_edit %}
+      <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=car.id) }}">Anuluj</a>
+    {% else %}
+      <a class="btn btn-secondary" href="{{ url_for('list_cars') }}">Anuluj</a>
+    {% endif %}
   </div>
 </form>
 {% endblock %}

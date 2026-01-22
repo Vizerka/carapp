@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Edytuj dokument — Car Manager{% endblock %}
+
+{% block content %}
+<h2 class="mb-3">Edytuj dokument</h2>
+
+<div class="card p-3 mb-3">
+  <div class="small text-muted">Aktualny plik</div>
+  <div class="fw-semibold">{{ doc.original_name }}</div>
+  <div class="small text-muted mt-1">
+    Dodano: {{ doc.uploaded_at.strftime('%Y-%m-%d %H:%M') }}
+  </div>
+
+  <div class="mt-2 d-flex gap-2 flex-wrap">
+    <a class="btn btn-sm btn-outline-primary" target="_blank"
+       href="{{ url_for('document_view', doc_id=doc.id) }}">Podgląd</a>
+    <a class="btn btn-sm btn-outline-secondary"
+       href="{{ url_for('document_download', doc_id=doc.id) }}">Pobierz</a>
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="row g-3">
+  <div class="col-md-4">
+    <label class="form-label">Kategoria</label>
+    <input name="category" class="form-control" value="{{ doc.category or '' }}" placeholder="np. OC, Faktura">
+  </div>
+
+  <div class="col-md-8">
+    <label class="form-label">Notatka</label>
+    <input name="note" class="form-control" value="{{ doc.note or '' }}" placeholder="opcjonalnie">
+  </div>
+
+  <div class="col-12">
+    <label class="form-label">Podmień plik (opcjonalnie)</label>
+    <input type="file" name="file" class="form-control" accept=".pdf,image/*">
+    <div class="form-text">Jeśli wybierzesz plik — stary zostanie zastąpiony. Dozwolone: pdf, jpg, jpeg, png, webp.</div>
+  </div>
+
+  <div class="col-12 d-flex gap-2">
+    <button class="btn btn-primary">Zapisz</button>
+    <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=doc.car_id) }}">Anuluj</a>
+  </div>
+</form>
+{% endblock %}
