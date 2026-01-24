@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>
+  {% if mode == "new" %}Dodaj użytkownika{% else %}Edytuj użytkownika{% endif %}
+</h2>
+
+<form method="post" class="mt-3" autocomplete="off">
+  <div class="mb-3">
+    <label class="form-label">Username</label>
+    <input class="form-control" name="username" value="{{ u.username if u else '' }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Email (opcjonalnie)</label>
+    <input class="form-control" name="email" value="{{ u.email if u and u.email else '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Hasło {% if mode == "edit" %}(zostaw puste, żeby nie zmieniać){% endif %}</label>
+    <input class="form-control" name="password" type="password">
+  </div>
+
+  <div class="form-check mb-2">
+    <input class="form-check-input" type="checkbox" name="is_admin" id="is_admin"
+           {% if u and u.is_admin %}checked{% endif %}>
+    <label class="form-check-label" for="is_admin">Admin</label>
+  </div>
+
+  <div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" name="is_active" id="is_active"
+           {% if not u or u.is_active %}checked{% endif %}>
+    <label class="form-check-label" for="is_active">Aktywny</label>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button class="btn btn-success">Zapisz</button>
+    <a class="btn btn-secondary" href="{{ url_for('admin_users') }}">Anuluj</a>
+  </div>
+</form>
+{% endblock %}

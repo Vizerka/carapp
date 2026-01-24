@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Edytuj interwał — {{ iv.name }}{% endblock %}
+{% block content %}
+<h2 class="mb-3">Edytuj interwał — {{ iv.name }}</h2>
+
+<form method="post" class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label">Nazwa</label>
+    <input name="name" class="form-control" value="{{ iv.name }}" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Interwał km</label>
+    <input name="interval_km" type="number" class="form-control" value="{{ iv.interval_km or '' }}" min="0" step="1">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Interwał dni</label>
+    <input name="interval_days" type="number" class="form-control" value="{{ iv.interval_days or '' }}" min="0" step="1">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Ostatnio km</label>
+    <input name="last_done_km" type="number" class="form-control" value="{{ iv.last_done_km or '' }}" min="0" step="1">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Ostatnio data</label>
+    <input name="last_done_date" type="date" class="form-control" value="{{ iv.last_done_date or '' }}">
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label">Notatka</label>
+    <input name="note" class="form-control" value="{{ iv.note or '' }}">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Aktywny</label>
+    <select name="active" class="form-select">
+      <option value="1" {% if iv.active %}selected{% endif %}>Tak</option>
+      <option value="0" {% if not iv.active %}selected{% endif %}>Nie</option>
+    </select>
+  </div>
+
+  <div class="col-12 d-flex gap-2">
+    <button class="btn btn-primary">Zapisz</button>
+    <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=iv.car_id) }}">Anuluj</a>
+  </div>
+</form>
+{% endblock %}

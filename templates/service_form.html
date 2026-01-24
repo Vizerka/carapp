@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Edytuj serwis — {{ car.make }} {{ car.model }}{% endblock %}
+{% block content %}
+<h2>Edytuj serwis — {{ car.make }} {{ car.model }}</h2>
+
+<form method="post" class="row g-3">
+  <div class="col-md-3">
+    <label class="form-label">Data</label>
+    <input type="date" name="date" class="form-control" value="{{ s.date.isoformat() }}" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Przebieg [km]</label>
+    <input type="number" name="km" class="form-control" value="{{ s.km or '' }}" min="0" step="1">
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label">Tytuł</label>
+    <input type="text" name="title" class="form-control" value="{{ s.title }}" required>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Koszt (PLN)</label>
+    <input type="text" name="cost" class="form-control" value="{{ s.cost or '' }}" placeholder="np. 123.45">
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Wykonawca / sklep</label>
+    <input type="text" name="vendor" class="form-control" value="{{ s.vendor or '' }}">
+  </div>
+
+  <div class="col-12">
+    <label class="form-label">Opis</label>
+    <textarea name="description" class="form-control" rows="3">{{ s.description or '' }}</textarea>
+  </div>
+
+  <div class="col-12">
+    <label class="form-label">Notatka</label>
+    <input type="text" name="note" class="form-control" value="{{ s.note or '' }}">
+  </div>
+
+  <div class="col-12 d-flex gap-2">
+    <button class="btn btn-primary">Zapisz</button>
+    <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=car.id) }}">Anuluj</a>
+  </div>
+</form>
+{% endblock %}

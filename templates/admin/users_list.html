@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Admin: użytkownicy</h2>
+  <a class="btn btn-primary" href="{{ url_for('admin_user_new') }}">+ Dodaj</a>
+</div>
+
+<table class="table table-striped align-middle">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Username</th>
+      <th>Email</th>
+      <th>Admin</th>
+      <th>Aktywny</th>
+      <th class="text-end">Akcje</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.id }}</td>
+      <td>{{ u.username }}</td>
+      <td>{{ u.email or "-" }}</td>
+      <td>{% if u.is_admin %}✅{% else %}—{% endif %}</td>
+      <td>{% if u.is_active %}✅{% else %}⛔{% endif %}</td>
+      <td class="text-end">
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin_user_edit', user_id=u.id) }}">Edytuj</a>
+        <form method="post" action="{{ url_for('admin_user_delete', user_id=u.id) }}" style="display:inline;"
+              onsubmit="return confirm('Usunąć użytkownika {{ u.username }}?');">
+          <button class="btn btn-sm btn-outline-danger">Usuń</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
