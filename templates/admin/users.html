@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin: użytkownicy</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th><th>Username</th><th>Email</th><th>Active</th><th>Admin</th><th>Akcje</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for u in users %}
+    <tr>
+      <td>{{ u.id }}</td>
+      <td>{{ u.username }}</td>
+      <td>{{ u.email or "-" }}</td>
+      <td>{{ "TAK" if u.is_active else "NIE" }}</td>
+      <td>{{ "TAK" if u.is_admin else "NIE" }}</td>
+      <td>
+        <form method="post" action="{{ url_for('admin_toggle_user_active', user_id=u.id) }}" style="display:inline">
+          <button type="submit">Toggle active</button>
+        </form>
+        <form method="post" action="{{ url_for('admin_toggle_user_admin', user_id=u.id) }}" style="display:inline">
+          <button type="submit">Toggle admin</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

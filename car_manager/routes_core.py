@@ -112,19 +112,59 @@ def init_routes(app):
     def car_detail(car_id):
         car = Car.query.get_or_404(car_id)
 
-        odo_desc = car.odometer_entries.order_by(desc(OdometerEntry.date), desc(OdometerEntry.id)).all()
+        # --- TAB + paginacja (oddzielna dla każdej listy) ---
+        tab = request.args.get("tab", "dash")
+
+        fuel_page = request.args.get("fuel_page", 1, type=int)
+        svc_page  = request.args.get("svc_page", 1, type=int)
+        docs_page = request.args.get("docs_page", 1, type=int)
+        odo_page = request.args.get("odo_page", 1, type=int)
+        
+        PER_PAGE_ODO = 30
+        PER_PAGE_FUEL = 20
+        PER_PAGE_SVC  = 20
+        PER_PAGE_DOCS = 15
+
+        odo_p = (
+            car.odometer_entries
+            .order_by(desc(OdometerEntry.date), desc(OdometerEntry.id))
+            .paginate(page=odo_page, per_page=PER_PAGE_ODO, error_out=False)
+        )
+
+        # wykres zostaw jak masz:
         odo_asc = car.odometer_entries.order_by(OdometerEntry.date.asc(), OdometerEntry.id.asc()).all()
         odo_labels = [e.date.isoformat() for e in odo_asc]
         odo_values = [e.km for e in odo_asc]
 
+        # --- OC / TI bez paginacji (zwykle mało) ---
         oc = car.insurance_policies.order_by(desc(InsurancePolicy.valid_to), desc(InsurancePolicy.id)).all()
         ti = car.tech_inspections.order_by(desc(TechInspection.valid_to), desc(TechInspection.id)).all()
-        services = car.service_entries.order_by(desc(ServiceEntry.date), desc(ServiceEntry.id)).all()
-        docs = car.documents.order_by(desc(Document.uploaded_at), desc(Document.id)).all()
 
-        fills_desc = car.fuel_entries.order_by(desc(FuelEntry.date), desc(FuelEntry.id)).all()
+        # --- Paginacja: serwis ---
+        services_p = (
+            car.service_entries
+            .order_by(desc(ServiceEntry.date), desc(ServiceEntry.id))
+            .paginate(page=svc_page, per_page=PER_PAGE_SVC, error_out=False)
+        )
+
+        # --- Paginacja: dokumenty ---
+        docs_p = (
+            car.documents
+            .order_by(desc(Document.uploaded_at), desc(Document.id))
+            .paginate(page=docs_page, per_page=PER_PAGE_DOCS, error_out=False)
+        )
+
+        # --- Paginacja: tankowania ---
+        fills_p = (
+            car.fuel_entries
+            .order_by(desc(FuelEntry.date), desc(FuelEntry.id))
+            .paginate(page=fuel_page, per_page=PER_PAGE_FUEL, error_out=False)
+        )
+
+        # --- Do wykresu spalania potrzebujemy ASC (pełny->pełny) ---
         fills_asc = car.fuel_entries.order_by(FuelEntry.date.asc(), FuelEntry.id.asc()).all()
 
+        # --- SUMY kosztów (bez zmian) ---
         fuel_total = db.session.query(func.sum(FuelEntry.total_cost)).filter(
             FuelEntry.car_id == car.id, FuelEntry.total_cost.isnot(None)
         ).scalar()
@@ -151,6 +191,7 @@ def init_routes(app):
                 if total_cost is not None:
                     cost_per_km = (total_cost / Decimal(dist))
 
+        # --- Wykres spalania (bez zmian w logice) ---
         cons_labels: list[str] = []
         cons_values: list[float] = []
 
@@ -179,6 +220,7 @@ def init_routes(app):
                 last_full = f
                 liters_acc = Decimal("0")
 
+        # --- Interwały (bez zmian) ---
         intervals = (
             car.service_intervals
             .filter(ServiceInterval.active == True)
@@ -200,24 +242,32 @@ def init_routes(app):
         return render_template(
             "car_detail.html",
             car=car,
-            odo=odo_desc,
+            tab=tab,
+
             odo_labels=odo_labels,
             odo_values=odo_values,
+
             oc=oc,
             ti=ti,
-            services=services,
-            docs=docs,
-            fills=fills_desc,
+
+            # UWAGA: teraz to są paginacje
+            services_p=services_p,
+            docs_p=docs_p,
+            fills_p=fills_p,
+
             fuel_total=fuel_total,
             service_total=service_total,
             total_cost=total_cost,
             distance=distance,
             cost_per_km=cost_per_km,
+
             cons_labels=cons_labels,
             cons_values=cons_values,
+
             intervals=intervals,
             interval_reminders=interval_reminders,
-            current_km=current_km
+            current_km=current_km,
+            odo_p=odo_p,
         )
 
     @app.post("/cars/<int:car_id>/delete")

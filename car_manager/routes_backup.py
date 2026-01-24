@@ -6,8 +6,10 @@ import os
 import zipfile
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
+from functools import wraps
 
-from flask import render_template, request, redirect, url_for, flash, send_file
+from flask import render_template, request, redirect, url_for, flash, send_file, abort
+from flask_login import login_required, current_user
 
 from .extensions import db
 from .models import (
@@ -20,12 +22,24 @@ from .helpers import (
 )
 
 
+def admin_required(view):
+    @wraps(view)
+    @login_required
+    def wrapped(*args, **kwargs):
+        if not getattr(current_user, "is_admin", False):
+            abort(403)
+        return view(*args, **kwargs)
+    return wrapped
+
+
 def init_routes(app):
     @app.get("/backup")
+    @admin_required
     def backup_page():
         return render_template("backup.html")
 
     @app.get("/backup/export.zip")
+    @admin_required
     def backup_export_zip():
         """
         Eksportuje ZIP: backup.json (dane) + uploads/<car_id>/... (pliki dokumentów).
@@ -70,6 +84,7 @@ def init_routes(app):
         )
 
     @app.post("/backup/import")
+    @admin_required
     def backup_import():
         """
         Import ZIP z backup.json + uploads/.
@@ -364,3 +379,4 @@ def init_routes(app):
             db.session.rollback()
             flash(f"Import wywalił się: {e}", "danger")
             return redirect(url_for("backup_page"))
+
