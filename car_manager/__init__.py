@@ -96,5 +96,14 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        from .mqtt_discovery import publish_safely
+        publish_safely()
+
+    @app.after_request
+    def _publish_mqtt_after_change(response):
+        if request.method == "POST" and request.path != "/login" and response.status_code < 400:
+            from .mqtt_discovery import publish_safely
+            publish_safely()
+        return response
 
     return app

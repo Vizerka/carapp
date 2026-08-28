@@ -39,6 +39,12 @@ class User(db.Model, UserMixin):
         return check_password_hash(self.password_hash, password)
 
 
+class MqttPublishedCar(db.Model):
+    """Rejestr discovery pozwalający usunąć encje HA po skasowaniu auta."""
+    car_id = db.Column(db.Integer, primary_key=True)
+    published_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
 @login_manager.user_loader
 def load_user(user_id: str):
     try:
