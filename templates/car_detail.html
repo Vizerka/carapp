@@ -172,24 +172,79 @@
   </div>
   {% endif %}
 
+  {# === ZMIENIONE: wykresy na osi czasu + dociągnięcie do dziś + działające punkty === #}
   <script>
     window.addEventListener('load', function () {
-      function drawLineChart(canvasId, labelText) {
+      // locale PL (ticki/tooltipy)
+      if (window.luxon?.Settings) {
+        luxon.Settings.defaultLocale = 'pl';
+      }
+
+      function num(v) {
+        if (v === null || v === undefined) return NaN;
+        return Number(String(v).trim().replace(/\s+/g, '').replace(',', '.'));
+      }
+
+      function drawTimeChart(canvasId, labelText) {
         const el = document.getElementById(canvasId);
         if (!el) return;
-        const labels = JSON.parse(el.dataset.labels || '[]');
-        const values = JSON.parse(el.dataset.values || '[]');
-        if (!labels.length) return;
+
+        const labels = JSON.parse(el.dataset.labels || '[]'); // ["2026-01-22", ...]
+        const values = JSON.parse(el.dataset.values || '[]'); // [136000, ...]
+        if (!labels.length || !values.length) return;
+
+        // Uwaga: masz parsing:false, więc x musi być liczbą (timestamp) albo Date.
+        let points = labels.map((d, i) => {
+          const dt = luxon.DateTime.fromISO(String(d));
+          return { x: dt.isValid ? dt.toMillis() : NaN, y: num(values[i]) };
+        })
+        .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y))
+        .sort((a, b) => a.x - b.x);
+
+        if (!points.length) return;
+
+        // zakres osi od pierwszego wpisu do końca dzisiaj
+        const minX = points[0].x;
+        const maxX = luxon.DateTime.local().endOf('day').toMillis();
+
+        // dociągnij linię do "teraz" jeśli ostatni wpis jest przed dzisiaj
+        const last = points[points.length - 1];
+        const todayStart = luxon.DateTime.local().startOf('day').toMillis();
+        if (last.x < todayStart) {
+          points.push({ x: luxon.DateTime.local().toMillis(), y: last.y });
+        }
 
         const ctx = el.getContext('2d');
         new Chart(ctx, {
           type: 'line',
-          data: { labels, datasets: [{ label: labelText, data: values, tension: 0.2 }] },
-          options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } }
+          data: {
+            datasets: [{
+              label: labelText,
+              data: points,
+              tension: 0.2
+            }]
+          },
+          options: {
+            parsing: false, // data jest już w formacie {x(ms), y}
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+              x: {
+                type: 'time',
+                min: minX,
+                max: maxX,
+                time: { tooltipFormat: 'yyyy-LL-dd' },
+                ticks: { autoSkip: true, maxRotation: 0 }
+              },
+              y: { beginAtZero: false }
+            }
+          }
         });
       }
-      drawLineChart('odoChart', 'Przebieg [km]');
-      drawLineChart('consChart', 'L/100km');
+
+      drawTimeChart('odoChart', 'Przebieg [km]');
+      drawTimeChart('consChart', 'L/100km');
     });
   </script>
 
@@ -249,8 +304,8 @@
 
   <div class="card p-3">
     <div class="text-muted small mb-2">
-  {{ odo_p.total }} wpisów · strona {{ odo_p.page }} / {{ odo_p.pages }}
-</div>
+      {{ odo_p.total }} wpisów · strona {{ odo_p.page }} / {{ odo_p.pages }}
+    </div>
     <ul class="small list-unstyled mb-0">
       {% for e in odo_p.items %}
         <li class="d-flex justify-content-between align-items-center border-top py-2">
@@ -262,7 +317,6 @@
             </form>
           </span>
         </li>
-        
       {% else %}
         <li class="text-muted">Brak wpisów.</li>
       {% endfor %}
