@@ -145,10 +145,13 @@
   {% if has_odo %}
   <div class="card p-3 mb-3" data-time-chart>
     <h5 class="mb-3">Wykres przebiegu</h5>
-    <div data-chart-viewport tabindex="0" aria-label="Przewijaj wykres przebiegu poziomo"
-         style="max-width:100%; overflow-x:auto; overflow-y:hidden;">
-      <div data-chart-plot style="position:relative; height:240px; min-width:100%;">
-        <canvas id="odoChart" data-labels='{{ odo_labels | tojson }}' data-values='{{ odo_values | tojson }}'></canvas>
+    <div class="d-flex" style="min-width:0;">
+      <div data-chart-axis style="flex:none; position:relative; width:96px; height:240px; border-right:1px solid var(--bs-border-color);"></div>
+      <div data-chart-viewport tabindex="0" aria-label="Przewijaj wykres przebiegu poziomo"
+           style="flex:1; min-width:0; overflow-x:auto; overflow-y:hidden;">
+        <div data-chart-plot style="position:relative; height:240px; min-width:100%;">
+          <canvas id="odoChart" data-labels='{{ odo_labels | tojson }}' data-values='{{ odo_values | tojson }}'></canvas>
+        </div>
       </div>
     </div>
     <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
@@ -176,10 +179,13 @@
   {% if has_cons %}
   <div class="card p-3 mb-3" data-time-chart>
     <h5 class="mb-3">Spalanie (pełny → pełny) [L/100km]</h5>
-    <div data-chart-viewport tabindex="0" aria-label="Przewijaj wykres spalania poziomo"
-         style="max-width:100%; overflow-x:auto; overflow-y:hidden;">
-      <div data-chart-plot style="position:relative; height:240px; min-width:100%;">
-        <canvas id="consChart" data-labels='{{ cons_labels | tojson }}' data-values='{{ cons_values | tojson }}'></canvas>
+    <div class="d-flex" style="min-width:0;">
+      <div data-chart-axis style="flex:none; position:relative; width:64px; height:240px; border-right:1px solid var(--bs-border-color);"></div>
+      <div data-chart-viewport tabindex="0" aria-label="Przewijaj wykres spalania poziomo"
+           style="flex:1; min-width:0; overflow-x:auto; overflow-y:hidden;">
+        <div data-chart-plot style="position:relative; height:240px; min-width:100%;">
+          <canvas id="consChart" data-labels='{{ cons_labels | tojson }}' data-values='{{ cons_values | tojson }}'></canvas>
+        </div>
       </div>
     </div>
     <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
@@ -206,7 +212,7 @@
   </div>
   {% endif %}
 
-  {# Cała historia na szerokich wykresach z niezależnym przewijaniem. #}
+  {# Cała historia na szerokich wykresach z nieruchomymi podziałkami Y. #}
   <script>
     window.addEventListener('load', function () {
       // locale PL (ticki/tooltipy)
@@ -224,6 +230,7 @@
         if (!el) return;
         const isConsumption = canvasId === 'consChart';
         const controls = el.closest('[data-time-chart]');
+        const fixedAxis = controls.querySelector('[data-chart-axis]');
         const viewport = controls.querySelector('[data-chart-viewport]');
         const plot = controls.querySelector('[data-chart-plot]');
         const period = controls.querySelector('[data-chart-period]');
@@ -262,7 +269,7 @@
         // Wszystkie wpisy zostają na wykresie; okres zmienia tylko szerokość
         // płótna, a nie liczbę punktów w zbiorze danych.
         function plotWidth() {
-          const screenWidth = Math.max(viewport.clientWidth, 300);
+          const screenWidth = Math.max(viewport.clientWidth, 1);
           if (period.value === 'all') return screenWidth;
           const months = Number(period.value);
           const periodStart = luxon.DateTime.fromMillis(maxX).minus({ months }).toMillis();
@@ -309,13 +316,34 @@
                 time: { tooltipFormat: 'yyyy-LL-dd' },
                 ticks: { autoSkip: true, maxRotation: 0 }
               },
-              y: { beginAtZero: false }
+              // Obliczaj podziałkę i linie siatki, ale wartości pokaż w panelu
+              // obok, który nie jest wewnątrz przewijanego kontenera.
+              y: { beginAtZero: false, ticks: { display: false } }
             }
           }
         });
 
         function maxScroll() {
           return Math.max(0, plot.clientWidth - viewport.clientWidth);
+        }
+
+        function drawFixedAxis() {
+          const y = chart.scales.y;
+          fixedAxis.textContent = '';
+          y.getTicks().forEach((tick, index) => {
+            const pixel = y.getPixelForTick(index);
+            if (!Number.isFinite(pixel)) return;
+            const value = document.createElement('span');
+            value.className = 'small text-body-secondary';
+            value.style.position = 'absolute';
+            value.style.right = '8px';
+            value.style.top = `${pixel}px`;
+            value.style.transform = 'translateY(-50%)';
+            value.style.whiteSpace = 'nowrap';
+            value.textContent = Array.isArray(tick.label)
+              ? tick.label.join(' ') : String(tick.label ?? tick.value);
+            fixedAxis.appendChild(value);
+          });
         }
 
         function updateNavigation() {
@@ -342,6 +370,7 @@
           plot.style.width = `${width}px`;
           chart.options.devicePixelRatio = pixelRatio(width);
           chart.resize(width, 240);
+          drawFixedAxis();
           viewport.scrollLeft = fraction * maxScroll();
           updateNavigation();
         }
