@@ -143,11 +143,26 @@
 
   {% set has_odo = (odo_values | length) > 0 %}
   {% if has_odo %}
-  <div class="card p-3 mb-3">
+  <div class="card p-3 mb-3" data-time-chart>
     <h5 class="mb-3">Wykres przebiegu</h5>
     <div style="height:240px;">
       <canvas id="odoChart" data-labels='{{ odo_labels | tojson }}' data-values='{{ odo_values | tojson }}'></canvas>
     </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+      <label for="odoChartPeriod" class="small mb-0">Zakres:</label>
+      <select id="odoChartPeriod" class="form-select form-select-sm w-auto" data-chart-period>
+        <option value="6">6 miesięcy</option>
+        <option value="12" selected>1 rok</option>
+        <option value="36">3 lata</option>
+        <option value="all">Całość</option>
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-chart-latest>Najnowsze</button>
+      <span class="small text-muted ms-sm-auto" data-chart-dates></span>
+    </div>
+    <input type="range" class="form-range mt-2 mb-0" min="0" max="1000" value="1000"
+           aria-label="Przesuń wykres przebiegu w czasie" data-chart-scroll>
+    <div class="form-text">Przesuwaj suwakiem, gładzikiem lub Shift + kółkiem myszki.</div>
+    <div class="form-text" data-chart-empty hidden>W tym okresie brak pomiarów przebiegu. Przesuń suwak lub wybierz szerszy zakres.</div>
   </div>
   {% else %}
   <div class="alert alert-secondary p-3 mb-3">
@@ -157,11 +172,26 @@
 
   {% set has_cons = (cons_values | reject('none') | list | length) > 0 %}
   {% if has_cons %}
-  <div class="card p-3 mb-3">
+  <div class="card p-3 mb-3" data-time-chart>
     <h5 class="mb-3">Spalanie (pełny → pełny) [L/100km]</h5>
     <div style="height:240px;">
       <canvas id="consChart" data-labels='{{ cons_labels | tojson }}' data-values='{{ cons_values | tojson }}'></canvas>
     </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+      <label for="consChartPeriod" class="small mb-0">Zakres:</label>
+      <select id="consChartPeriod" class="form-select form-select-sm w-auto" data-chart-period>
+        <option value="6">6 miesięcy</option>
+        <option value="12" selected>1 rok</option>
+        <option value="36">3 lata</option>
+        <option value="all">Całość</option>
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-chart-latest>Najnowsze</button>
+      <span class="small text-muted ms-sm-auto" data-chart-dates></span>
+    </div>
+    <input type="range" class="form-range mt-2 mb-0" min="0" max="1000" value="1000"
+           aria-label="Przesuń wykres spalania w czasie" data-chart-scroll>
+    <div class="form-text">Przesuwaj suwakiem, gładzikiem lub Shift + kółkiem myszki.</div>
+    <div class="form-text" data-chart-empty hidden>W tym okresie brak wiarygodnych wyników spalania. Przesuń suwak lub wybierz szerszy zakres.</div>
     <div class="form-text mt-2">
       Liczone między pełnymi tankowaniami. Przerwa w zapisach pomija wynik dla tego okresu.
     </div>
@@ -172,7 +202,7 @@
   </div>
   {% endif %}
 
-  {# === ZMIENIONE: wykresy na osi czasu + dociągnięcie do dziś + działające punkty === #}
+  {# Wykresy na osi czasu z niezależnymi suwakami i zakresem widoku. #}
   <script>
     window.addEventListener('load', function () {
       // locale PL (ticki/tooltipy)
@@ -189,6 +219,12 @@
         const el = document.getElementById(canvasId);
         if (!el) return;
         const isConsumption = canvasId === 'consChart';
+        const controls = el.closest('[data-time-chart]');
+        const period = controls.querySelector('[data-chart-period]');
+        const scroll = controls.querySelector('[data-chart-scroll]');
+        const latest = controls.querySelector('[data-chart-latest]');
+        const dates = controls.querySelector('[data-chart-dates]');
+        const empty = controls.querySelector('[data-chart-empty]');
 
         const labels = JSON.parse(el.dataset.labels || '[]'); // ["2026-01-22", ...]
         const values = JSON.parse(el.dataset.values || '[]'); // [136000, ...]
@@ -204,10 +240,6 @@
 
         if (!points.length) return;
 
-        // zakres osi od pierwszego wpisu do końca dzisiaj
-        const minX = points[0].x;
-        const maxX = luxon.DateTime.local().endOf('day').toMillis();
-
         // Przebieg można dociągnąć do dziś; pomiar spalania kończy się przy tankowaniu.
         const last = points[points.length - 1];
         const todayStart = luxon.DateTime.local().startOf('day').toMillis();
@@ -215,8 +247,15 @@
           points.push({ x: luxon.DateTime.local().toMillis(), y: last.y });
         }
 
+        const minX = points[0].x;
+        const maxX = Math.max(
+          minX + 24 * 60 * 60 * 1000, // co najmniej jeden dzień przy pojedynczym pomiarze
+          isConsumption ? last.x : luxon.DateTime.local().endOf('day').toMillis(),
+          points[points.length - 1].x
+        );
+
         const ctx = el.getContext('2d');
-        new Chart(ctx, {
+        const chart = new Chart(ctx, {
           type: 'line',
           data: {
             datasets: [{
@@ -243,6 +282,63 @@
             }
           }
         });
+
+        // Zachowujemy oryginalne punkty: filtr na każdym przesunięciu pozwala osi Y
+        // dopasować się do aktualnego okresu i pozostawia null przy przerwie w zapisach.
+        function windowLength() {
+          if (period.value === 'all') return maxX - minX;
+          const months = Number(period.value);
+          const start = luxon.DateTime.fromMillis(maxX).minus({ months }).toMillis();
+          return Math.min(maxX - minX, maxX - start);
+        }
+
+        let visibleEnd = maxX;
+        function showWindow(end) {
+          const length = windowLength();
+          const earliestEnd = minX + length;
+          visibleEnd = Math.max(earliestEnd, Math.min(maxX, end));
+          const visibleStart = Math.max(minX, visibleEnd - length);
+          const visiblePoints = points.filter(p => p.x >= visibleStart && p.x <= visibleEnd);
+
+          chart.options.scales.x.min = visibleStart;
+          chart.options.scales.x.max = visibleEnd;
+          chart.data.datasets[0].data = visiblePoints;
+          chart.update('none');
+
+          scroll.disabled = length >= maxX - minX;
+          scroll.value = scroll.disabled ? 1000 : Math.round(
+            (visibleEnd - earliestEnd) / (maxX - earliestEnd) * 1000
+          );
+          latest.disabled = scroll.disabled || visibleEnd >= maxX;
+          dates.textContent = `${luxon.DateTime.fromMillis(visibleStart).toFormat('dd.LL.yyyy')} – ${luxon.DateTime.fromMillis(visibleEnd).toFormat('dd.LL.yyyy')}`;
+          empty.hidden = visiblePoints.some(p => Number.isFinite(p.y));
+        }
+
+        showWindow(maxX);
+        period.addEventListener('change', function () {
+          showWindow(period.value === 'all' ? maxX : visibleEnd);
+        });
+        scroll.addEventListener('input', function () {
+          const length = windowLength();
+          const earliestEnd = minX + length;
+          showWindow(earliestEnd + (maxX - earliestEnd) * Number(scroll.value) / 1000);
+        });
+        latest.addEventListener('click', function () { showWindow(maxX); });
+
+        // Poziomy gest gładzika lub Shift + kółko przewija wykres; zwykłe
+        // pionowe przewijanie strony pozostaje dostępne.
+        el.addEventListener('wheel', function (event) {
+          if (scroll.disabled) return;
+          const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+            ? event.deltaX : (event.shiftKey ? event.deltaY : 0);
+          if (!delta) return;
+          const newEnd = Math.max(minX + windowLength(), Math.min(maxX,
+            visibleEnd + delta * windowLength() / 700
+          ));
+          if (newEnd === visibleEnd) return;
+          event.preventDefault();
+          showWindow(newEnd);
+        }, { passive: false });
       }
 
       drawTimeChart('odoChart', 'Przebieg [km]');
