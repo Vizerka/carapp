@@ -32,6 +32,9 @@ def init_routes(app):
 
         full_raw = (request.form.get("full_tank") or "").strip().lower()
         full_tank = full_raw in ("1", "true", "on", "yes", "y")
+        unrecorded = full_tank and request.form.get(
+            "unrecorded_refuels_since_last_full"
+        ) == "on"
 
         ok, msg = validate_odometer(car.id, when, km, None)
         if not ok:
@@ -47,6 +50,7 @@ def init_routes(app):
             price_per_l=price_per_l,
             station=station,
             full_tank=full_tank,
+            unrecorded_refuels_since_last_full=unrecorded,
             note=note,
         )
         db.session.add(fill)
@@ -83,6 +87,9 @@ def init_routes(app):
 
             full_raw = (request.form.get("full_tank") or "").strip().lower()
             full_tank = full_raw in ("1", "true", "on", "yes", "y")
+            unrecorded = full_tank and request.form.get(
+                "unrecorded_refuels_since_last_full"
+            ) == "on"
 
             ok, msg = validate_odometer(car.id, when, km, None)
             if not ok:
@@ -96,6 +103,7 @@ def init_routes(app):
             f.price_per_l = price_per_l
             f.station = station
             f.full_tank = full_tank
+            f.unrecorded_refuels_since_last_full = unrecorded
             f.note = note
 
             upsert_odometer_for_date(

@@ -155,7 +155,7 @@
   </div>
   {% endif %}
 
-  {% set has_cons = (cons_values | length) > 0 %}
+  {% set has_cons = (cons_values | reject('none') | list | length) > 0 %}
   {% if has_cons %}
   <div class="card p-3 mb-3">
     <h5 class="mb-3">Spalanie (pełny → pełny) [L/100km]</h5>
@@ -163,12 +163,12 @@
       <canvas id="consChart" data-labels='{{ cons_labels | tojson }}' data-values='{{ cons_values | tojson }}'></canvas>
     </div>
     <div class="form-text mt-2">
-      Liczone tylko dla tankowań oznaczonych jako <strong>pełny bak</strong>.
+      Liczone między pełnymi tankowaniami. Przerwa w zapisach pomija wynik dla tego okresu.
     </div>
   </div>
   {% else %}
   <div class="alert alert-secondary p-3 mb-3">
-    Brak danych do wykresu spalania — dodaj co najmniej <strong>dwa</strong> tankowania “pełny bak”.
+    Brak wiarygodnych danych do wykresu spalania — potrzebne są dwa kolejne pełne tankowania bez przerwy w zapisach.
   </div>
   {% endif %}
 
@@ -188,6 +188,7 @@
       function drawTimeChart(canvasId, labelText) {
         const el = document.getElementById(canvasId);
         if (!el) return;
+        const isConsumption = canvasId === 'consChart';
 
         const labels = JSON.parse(el.dataset.labels || '[]'); // ["2026-01-22", ...]
         const values = JSON.parse(el.dataset.values || '[]'); // [136000, ...]
@@ -196,9 +197,9 @@
         // Uwaga: masz parsing:false, więc x musi być liczbą (timestamp) albo Date.
         let points = labels.map((d, i) => {
           const dt = luxon.DateTime.fromISO(String(d));
-          return { x: dt.isValid ? dt.toMillis() : NaN, y: num(values[i]) };
+          return { x: dt.isValid ? dt.toMillis() : NaN, y: values[i] === null ? null : num(values[i]) };
         })
-        .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y))
+        .filter(p => Number.isFinite(p.x) && (Number.isFinite(p.y) || (isConsumption && p.y === null)))
         .sort((a, b) => a.x - b.x);
 
         if (!points.length) return;
@@ -207,10 +208,10 @@
         const minX = points[0].x;
         const maxX = luxon.DateTime.local().endOf('day').toMillis();
 
-        // dociągnij linię do "teraz" jeśli ostatni wpis jest przed dzisiaj
+        // Przebieg można dociągnąć do dziś; pomiar spalania kończy się przy tankowaniu.
         const last = points[points.length - 1];
         const todayStart = luxon.DateTime.local().startOf('day').toMillis();
-        if (last.x < todayStart) {
+        if (!isConsumption && last.x < todayStart) {
           points.push({ x: luxon.DateTime.local().toMillis(), y: last.y });
         }
 
@@ -221,7 +222,8 @@
             datasets: [{
               label: labelText,
               data: points,
-              tension: 0.2
+              tension: 0.2,
+              spanGaps: false
             }]
           },
           options: {
@@ -261,6 +263,7 @@
               <b>{{ f.date }}</b> · {{ f.km }} km · {{ f.liters }} L
               {% if f.total_cost %}· {{ f.total_cost }} PLN{% endif %}
               {% if f.full_tank %}<span class="badge text-bg-success ms-1">pełny</span>{% endif %}
+              {% if f.unrecorded_refuels_since_last_full %}<span class="badge text-bg-warning ms-1">przerwa w zapisach</span>{% endif %}
             </li>
           {% else %}
             <li class="text-muted">Brak tankowań.</li>
@@ -410,6 +413,9 @@
               — <span class="badge text-bg-success">pełny</span>
             {% else %}
               — <span class="badge text-bg-secondary">niepełny</span>
+            {% endif %}
+            {% if f.unrecorded_refuels_since_last_full %}
+              — <span class="badge text-bg-warning">przerwa w zapisach</span>
             {% endif %}
             {% if f.note %} — {{ f.note }}{% endif %}
           </span>
@@ -695,6 +701,14 @@
           <div class="col-md-3"><input type="text" name="liters" class="form-control" placeholder="litry (np. 42,5)" required></div>
           <div class="col-md-3"><select name="full_tank" class="form-select"><option value="1" selected>Pełny bak</option><option value="0">Niepełny</option></select></div>
 
+          <div class="col-12" id="newFuelHistory">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="unrecorded_refuels_since_last_full" id="newFuelUnrecorded">
+              <label class="form-check-label" for="newFuelUnrecorded">Od poprzedniego pełnego tankowania były niezapisane tankowania</label>
+            </div>
+            <div class="form-text">Spalanie za ten okres zostanie pominięte. Ten pełny bak rozpocznie nowy pomiar.</div>
+          </div>
+
           <div class="col-md-4"><input type="text" name="total_cost" class="form-control" placeholder="koszt PLN (opc.)"></div>
           <div class="col-md-4"><input type="text" name="price_per_l" class="form-control" placeholder="PLN/L (auto)"></div>
           <div class="col-md-4"><input type="text" name="station" class="form-control" placeholder="stacja (opc.)"></div>
@@ -715,6 +729,17 @@
 (function () {
   const modal = document.getElementById('modalFuel');
   if (!modal) return;
+
+  const fullTankEl = modal.querySelector('select[name="full_tank"]');
+  const historyWrap = modal.querySelector('#newFuelHistory');
+  const historyEl = modal.querySelector('#newFuelUnrecorded');
+  function syncFuelHistory() {
+    const full = fullTankEl.value === '1';
+    historyWrap.hidden = !full;
+    if (!full) historyEl.checked = false;
+  }
+  fullTankEl.addEventListener('change', syncFuelHistory);
+  syncFuelHistory();
 
   const litersEl = modal.querySelector('input[name="liters"]');
   const totalEl  = modal.querySelector('input[name="total_cost"]');

@@ -2,6 +2,7 @@
 import os
 from flask import Flask, request, redirect, url_for
 from flask_login import current_user
+from sqlalchemy import inspect
 
 from .extensions import db, login_manager
 from .helpers import days_left_filter
@@ -96,6 +97,16 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        # create_all() nie dodaje kolumn do istniejących tabel SQLite.
+        # Wcześniejsze wpisy otrzymują domyślnie wartość 0.
+        if "unrecorded_refuels_since_last_full" not in {
+            col["name"] for col in inspect(db.engine).get_columns("fuel_entry")
+        }:
+            with db.engine.begin() as conn:
+                conn.exec_driver_sql(
+                    "ALTER TABLE fuel_entry ADD COLUMN "
+                    "unrecorded_refuels_since_last_full BOOLEAN NOT NULL DEFAULT 0"
+                )
         from .mqtt_discovery import publish_safely
         publish_safely()
 

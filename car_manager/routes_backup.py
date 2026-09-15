@@ -289,6 +289,19 @@ def init_routes(app):
 
                         k = key_func_kwargs(kwargs)
                         if k in existing:
+                            # Ten sam wpis może już istnieć, a nowy backup
+                            # może dopiero zawierać informację o brakujących tankowaniach.
+                            if model_cls is FuelEntry and kwargs.get(
+                                "unrecorded_refuels_since_last_full"
+                            ):
+                                for old in FuelEntry.query.filter_by(
+                                    car_id=kwargs["car_id"],
+                                    date=kwargs["date"],
+                                    km=kwargs["km"],
+                                ):
+                                    if key_fuel(old) == k:
+                                        old.unrecorded_refuels_since_last_full = True
+                                        break
                             continue
 
                         obj = model_cls(**kwargs)
@@ -379,4 +392,3 @@ def init_routes(app):
             db.session.rollback()
             flash(f"Import wywalił się: {e}", "danger")
             return redirect(url_for("backup_page"))
-

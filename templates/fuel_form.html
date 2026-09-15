@@ -47,6 +47,14 @@
     </div>
   </div>
 
+  <div class="col-12" id="editFuelHistory" {% if not f.full_tank %}hidden{% endif %}>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="unrecorded_refuels_since_last_full" id="editFuelUnrecorded" {% if f.unrecorded_refuels_since_last_full %}checked{% endif %}>
+      <label class="form-check-label" for="editFuelUnrecorded">Od poprzedniego pełnego tankowania były niezapisane tankowania</label>
+    </div>
+    <div class="form-text">Spalanie za ten okres zostanie pominięte. Ten pełny bak rozpocznie nowy pomiar.</div>
+  </div>
+
   <div class="col-12">
     <label class="form-label">Notatka</label>
     <input type="text" name="note" class="form-control" value="{{ f.note or '' }}">
@@ -57,4 +65,13 @@
     <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=car.id) }}">Anuluj</a>
   </div>
 </form>
+<script>
+  const fullTank = document.getElementById('full_tank');
+  const historyWrap = document.getElementById('editFuelHistory');
+  const historyInput = document.getElementById('editFuelUnrecorded');
+  fullTank.addEventListener('change', () => {
+    historyWrap.hidden = !fullTank.checked;
+    if (!fullTank.checked) historyInput.checked = false;
+  });
+</script>
 {% endblock %}

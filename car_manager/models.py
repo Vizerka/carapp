@@ -161,6 +161,9 @@ class FuelEntry(db.Model):
     price_per_l = db.Column(db.Numeric(10, 3))
     station = db.Column(db.String(120))
     full_tank = db.Column(db.Boolean, default=True, nullable=False)
+    unrecorded_refuels_since_last_full = db.Column(
+        db.Boolean, default=False, server_default="0", nullable=False
+    )
     note = db.Column(db.String(255))
 
     car = db.relationship(

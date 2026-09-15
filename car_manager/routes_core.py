@@ -15,6 +15,7 @@ from .models import (
     ServiceEntry, FuelEntry, Document, ServiceInterval
 )
 from .helpers import parse_date, parse_decimal, compute_interval_status
+from .fuel_consumption import consumption_series
 
 def init_routes(app):
     @app.get("/")
@@ -191,34 +192,8 @@ def init_routes(app):
                 if total_cost is not None:
                     cost_per_km = (total_cost / Decimal(dist))
 
-        # --- Wykres spalania (bez zmian w logice) ---
-        cons_labels: list[str] = []
-        cons_values: list[float] = []
-
-        last_full = None
-        liters_acc = Decimal("0")
-
-        for f in fills_asc:
-            if last_full is None:
-                if f.full_tank:
-                    last_full = f
-                    liters_acc = Decimal("0")
-                continue
-
-            liters_acc += Decimal(f.liters or 0)
-
-            if f.full_tank:
-                km1 = int(last_full.km)
-                km2 = int(f.km)
-                dist = km2 - km1
-
-                if dist > 0:
-                    l_per_100 = (liters_acc / Decimal(dist)) * Decimal("100")
-                    cons_labels.append(f.date.isoformat())
-                    cons_values.append(float(l_per_100))
-
-                last_full = f
-                liters_acc = Decimal("0")
+        # Pełne tankowanie z przerwą zamyka poprzedni odcinek bez wyniku.
+        cons_labels, cons_values = consumption_series(fills_asc)
 
         # --- Interwały (bez zmian) ---
         intervals = (
