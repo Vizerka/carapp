@@ -1,0 +1,220 @@
+{# ============================================================
+   DASHBOARD
+   ============================================================ #}
+{% if tab == 'dash' %}
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h5 class="mb-0">Koszt posiadania</h5>
+    <div class="btn-group btn-group-sm" role="group" aria-label="Okres kosztów">
+      <a class="btn btn-outline-secondary {% if cost_period == 'year' %}active{% endif %}"
+         href="{{ url_for('car_detail', car_id=car.id, tab='dash', cost_period='year') }}">Ten rok</a>
+      <a class="btn btn-outline-secondary {% if cost_period == '12m' %}active{% endif %}"
+         href="{{ url_for('car_detail', car_id=car.id, tab='dash', cost_period='12m') }}">12 miesięcy</a>
+      <a class="btn btn-outline-secondary {% if cost_period == 'all' %}active{% endif %}"
+         href="{{ url_for('car_detail', car_id=car.id, tab='dash', cost_period='all') }}">Całość</a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-6 col-xl-3">
+      <div class="card p-3 h-100">
+        <div class="text-muted small">Paliwo</div>
+        <div class="fs-4 fw-semibold">
+          {% if fuel_total is not none %}{{ "%.2f"|format(fuel_total|float) }} PLN{% else %}—{% endif %}
+        </div>
+        <div class="text-muted small">suma z tankowań z kosztem</div>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-xl-3">
+      <div class="card p-3 h-100">
+        <div class="text-muted small">Serwis</div>
+        <div class="fs-4 fw-semibold">
+          {% if service_total is not none %}{{ "%.2f"|format(service_total|float) }} PLN{% else %}—{% endif %}
+        </div>
+        <div class="text-muted small">suma wpisów serwisowych</div>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-xl-3">
+      <div class="card p-3 h-100">
+        <div class="text-muted small">Pozostałe wydatki</div>
+        <div class="fs-4 fw-semibold">
+          {% if expense_total is not none %}{{ "%.2f"|format(expense_total|float) }} PLN{% else %}—{% endif %}
+        </div>
+        <div class="text-muted small">OC, przeglądy, części i inne</div>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-xl-3">
+      <div class="card p-3 h-100">
+        <div class="text-muted small">Łącznie</div>
+        <div class="fs-4 fw-semibold">
+          {% if total_cost is not none %}{{ "%.2f"|format(total_cost|float) }} PLN{% else %}—{% endif %}
+        </div>
+        <div class="text-muted small">paliwo + serwis + pozostałe</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-3 mb-3">
+    <div class="row g-3 align-items-start">
+      <div class="col-md-4">
+        <div class="text-muted small">Koszt / km</div>
+        <div class="fs-4 fw-semibold">
+          {% if cost_per_km is not none %}{{ "%.2f"|format(cost_per_km|float) }} PLN/km{% else %}—{% endif %}
+        </div>
+        <div class="text-muted small">
+          {% if distance %}dystans w okresie: {{ distance }} km{% else %}brak dwóch pomiarów przebiegu w okresie{% endif %}
+        </div>
+      </div>
+      <div class="col-md-8">
+        <div class="fw-semibold mb-2">Rozbicie kosztów</div>
+        {% if cost_breakdown %}
+          <div class="row row-cols-1 row-cols-sm-2 g-2">
+            {% for row in cost_breakdown %}
+              <div class="col d-flex justify-content-between gap-3 border-top pt-2">
+                <span>{{ row.label }}</span>
+                <strong>{{ "%.2f"|format(row.amount|float) }} PLN</strong>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-muted small">Brak kosztów w wybranym okresie.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-3 mb-3">
+    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+      <div class="fw-semibold">Szybkie akcje</div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalOdo">+ Przebieg</button>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalOC">+ Polisa</button>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalTI">+ Przegląd</button>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalFuel">+ Tankowanie</button>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalInterval">+ Interwał</button>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalService">+ Serwis</button>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalExpense">+ Wydatek</button>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalDoc">+ Dokument</button>
+      </div>
+    </div>
+  </div>
+
+  {% set has_odo = (odo_values | length) > 0 %}
+  {% if has_odo %}
+  <div class="card p-3 mb-3" data-time-chart>
+    <h5 class="mb-3">Wykres przebiegu</h5>
+    <div class="d-flex" style="min-width:0;">
+      <div data-chart-axis style="flex:none; position:relative; width:96px; height:240px; border-right:1px solid var(--bs-border-color);"></div>
+      <div data-chart-viewport tabindex="0" aria-label="Przewijaj wykres przebiegu poziomo"
+           style="flex:1; min-width:0; overflow-x:auto; overflow-y:hidden;">
+        <div data-chart-plot style="position:relative; height:240px; min-width:100%;">
+          <canvas id="odoChart" data-labels='{{ odo_labels | tojson }}' data-values='{{ odo_values | tojson }}'></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+      <label for="odoChartPeriod" class="small mb-0">Czas na ekranie:</label>
+      <select id="odoChartPeriod" class="form-select form-select-sm w-auto" data-chart-period>
+        <option value="6">6 miesięcy</option>
+        <option value="12" selected>1 rok</option>
+        <option value="36">3 lata</option>
+        <option value="all">Całość</option>
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-chart-latest>Najnowsze</button>
+      <span class="small text-muted ms-sm-auto" data-chart-dates></span>
+    </div>
+    <input type="range" class="form-range mt-2 mb-0" min="0" max="1000" value="1000"
+           aria-label="Przesuń wykres przebiegu w czasie" data-chart-scroll>
+    <div class="form-text">Przewijaj wykres poziomo, suwakiem, gładzikiem lub Shift + kółkiem myszki.</div>
+  </div>
+  {% else %}
+  <div class="alert alert-secondary p-3 mb-3">
+    Brak danych do wykresu — dodaj pierwszy wpis przebiegu.
+  </div>
+  {% endif %}
+
+  {% set has_cons = (cons_values | reject('none') | list | length) > 0 %}
+  {% if has_cons %}
+  <div class="card p-3 mb-3" data-time-chart>
+    <h5 class="mb-3">Spalanie (pełny → pełny) [L/100km]</h5>
+    <div class="d-flex" style="min-width:0;">
+      <div data-chart-axis style="flex:none; position:relative; width:64px; height:240px; border-right:1px solid var(--bs-border-color);"></div>
+      <div data-chart-viewport tabindex="0" aria-label="Przewijaj wykres spalania poziomo"
+           style="flex:1; min-width:0; overflow-x:auto; overflow-y:hidden;">
+        <div data-chart-plot style="position:relative; height:240px; min-width:100%;">
+          <canvas id="consChart" data-labels='{{ cons_labels | tojson }}' data-values='{{ cons_values | tojson }}'></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+      <label for="consChartPeriod" class="small mb-0">Czas na ekranie:</label>
+      <select id="consChartPeriod" class="form-select form-select-sm w-auto" data-chart-period>
+        <option value="6">6 miesięcy</option>
+        <option value="12" selected>1 rok</option>
+        <option value="36">3 lata</option>
+        <option value="all">Całość</option>
+      </select>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-chart-latest>Najnowsze</button>
+      <span class="small text-muted ms-sm-auto" data-chart-dates></span>
+    </div>
+    <input type="range" class="form-range mt-2 mb-0" min="0" max="1000" value="1000"
+           aria-label="Przesuń wykres spalania w czasie" data-chart-scroll>
+    <div class="form-text">Przewijaj wykres poziomo, suwakiem, gładzikiem lub Shift + kółkiem myszki.</div>
+    <div class="form-text mt-2">
+      Liczone między pełnymi tankowaniami. Przerwa w zapisach pomija wynik dla tego okresu.
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-secondary p-3 mb-3">
+    Brak wiarygodnych danych do wykresu spalania — potrzebne są dwa kolejne pełne tankowania bez przerwy w zapisach.
+  </div>
+  {% endif %}
+
+  {# Cała historia na szerokich wykresach z nieruchomymi podziałkami Y. #}
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card p-3 h-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-semibold">Ostatnie tankowania</div>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='fuel') }}">Zobacz</a>
+        </div>
+        <ul class="list-unstyled small mb-0">
+          {% for f in (fills_p.items[:5] if fills_p else []) %}
+            <li class="border-top py-2">
+              <b>{{ f.date }}</b> · {{ f.km }} km · {{ f.liters }} L
+              {% if f.total_cost %}· {{ f.total_cost }} PLN{% endif %}
+              {% if f.full_tank %}<span class="badge text-bg-success ms-1">pełny</span>{% endif %}
+              {% if f.unrecorded_refuels_since_last_full %}<span class="badge text-bg-warning ms-1">przerwa w zapisach</span>{% endif %}
+            </li>
+          {% else %}
+            <li class="text-muted">Brak tankowań.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card p-3 h-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-semibold">Ostatni serwis</div>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='svc') }}">Zobacz</a>
+        </div>
+        <ul class="list-unstyled small mb-0">
+          {% for s in (services_p.items[:5] if services_p else []) %}
+            <li class="border-top py-2">
+              <b>{{ s.date }}</b>
+              {% if s.km %}· {{ s.km }} km{% endif %}
+              · {{ s.title }}
+              {% if s.cost %}· {{ s.cost }} PLN{% endif %}
+            </li>
+          {% else %}
+            <li class="text-muted">Brak wpisów serwisowych.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+{% endif %}

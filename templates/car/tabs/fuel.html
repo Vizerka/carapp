@@ -1,0 +1,48 @@
+{# ============================================================
+   TANKOWANIA (PAGINACJA)
+   ============================================================ #}
+{% if tab == 'fuel' %}
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Tankowania ⛽</h5>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalFuel">Dodaj tankowanie</button>
+  </div>
+
+  <div class="card p-3">
+    <div class="text-muted small mb-2">
+      {{ fills_p.total }} wpisów · strona {{ fills_p.page }} / {{ fills_p.pages }}
+    </div>
+
+    <ul class="list-unstyled small mb-0">
+      {% for f in fills_p.items %}
+        <li class="d-flex justify-content-between align-items-center border-top py-2">
+          <span>
+            <strong>{{ f.date }}</strong> — {{ f.km }} km — {{ f.liters }} L
+            {% if f.total_cost %} — {{ f.total_cost }} PLN{% endif %}
+            {% if f.price_per_l %} — {{ f.price_per_l }} PLN/L{% endif %}
+            {% if f.station %} — <em>{{ f.station }}</em>{% endif %}
+            {% if f.full_tank %}
+              — <span class="badge text-bg-success">pełny</span>
+            {% else %}
+              — <span class="badge text-bg-secondary">niepełny</span>
+            {% endif %}
+            {% if f.unrecorded_refuels_since_last_full %}
+              — <span class="badge text-bg-warning">przerwa w zapisach</span>
+            {% endif %}
+            {% if f.note %} — {{ f.note }}{% endif %}
+          </span>
+          <span class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('fuel_edit', fill_id=f.id) }}">Edytuj</a>
+            <form method="post" action="{{ url_for('fuel_delete', fill_id=f.id) }}" onsubmit="return confirm('Usunąć tankowanie?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger">Usuń</button>
+            </form>
+          </span>
+        </li>
+      {% else %}
+        <li class="text-muted">Brak tankowań.</li>
+      {% endfor %}
+    </ul>
+
+    {{ pager(fills_p, 'fuel', 'fuel_page') }}
+  </div>
+{% endif %}

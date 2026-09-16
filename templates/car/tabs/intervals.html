@@ -1,0 +1,65 @@
+{# ============================================================
+   INTERWAŁY (bez zmian)
+   ============================================================ #}
+{% if tab == 'iv' %}
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Interwały serwisowe ⏱️</h5>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalInterval">Dodaj interwał</button>
+  </div>
+
+  <div class="card p-3">
+    <div class="text-muted small mb-2">
+      {% if current_km is not none %}Aktualny przebieg: <strong>{{ current_km }} km</strong>{% else %}Aktualny przebieg: —{% endif %}
+    </div>
+
+    <h6 class="mb-2">Przypominajki</h6>
+    <ul class="list-unstyled small mb-0">
+      {% for iv, c in interval_reminders %}
+        {% set badge = 'secondary' %}
+        {% if c.status == 'due' %}{% set badge = 'danger' %}
+        {% elif c.status == 'soon' %}{% set badge = 'warning' %}
+        {% elif c.status == 'ok' %}{% set badge = 'success' %}
+        {% endif %}
+
+        <li class="d-flex justify-content-between align-items-center border-top py-2">
+          <span>
+            <span class="badge text-bg-{{ badge }}">{{ c.status }}</span>
+            <strong class="ms-2">{{ iv.name }}</strong>
+
+            {% if c.next_km is not none %}
+              — następne: {{ c.next_km }} km
+              {% if c.km_left is not none %} ({{ c.km_left }} km){% endif %}
+            {% endif %}
+
+            {% if c.next_date is not none %}
+              — {{ c.next_date }}
+              {% if c.days_left is not none %} ({{ c.days_left }} dni){% endif %}
+            {% endif %}
+
+            {% if iv.note %} — <em>{{ iv.note }}</em>{% endif %}
+          </span>
+
+          <span class="d-flex gap-2 flex-wrap justify-content-end">
+            <form method="post" action="{{ url_for('interval_mark_done', interval_id=iv.id) }}" class="d-flex gap-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="date" name="date" class="form-control form-control-sm" style="max-width: 150px;">
+              <input type="number" name="km" class="form-control form-control-sm" placeholder="km"
+                     style="max-width: 120px;" min="0" step="1">
+              <button class="btn btn-sm btn-outline-success">Zrobione</button>
+            </form>
+
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('interval_edit', interval_id=iv.id) }}">Edytuj</a>
+
+            <form method="post" action="{{ url_for('interval_delete', interval_id=iv.id) }}"
+                  onsubmit="return confirm('Usunąć interwał?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger">Usuń</button>
+            </form>
+          </span>
+        </li>
+      {% else %}
+        <li class="text-muted">Brak interwałów.</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}

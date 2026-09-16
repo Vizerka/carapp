@@ -1,0 +1,30 @@
+{% if tab == 'ti' %}
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Przeglądy</h5>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTI">Dodaj przegląd</button>
+  </div>
+
+  <div class="card p-3">
+    <ul class="small list-unstyled mb-0">
+      {% for i in ti %}
+        <li class="d-flex justify-content-between align-items-center border-top py-2">
+          <span>
+            {{ i.date }} → {{ i.valid_to }}
+            {% if i.result %} — {{ i.result }}{% endif %}
+            {% if i.station %} @ {{ i.station }}{% endif %}
+            {% if i.note %} — <em>{{ i.note }}</em>{% endif %}
+          </span>
+          <span class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('inspection_edit', ins_id=i.id) }}">Edytuj</a>
+            <form method="post" action="{{ url_for('inspection_delete', ins_id=i.id) }}" onsubmit="return confirm('Usunąć przegląd?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger">Usuń</button>
+            </form>
+          </span>
+        </li>
+      {% else %}
+        <li class="text-muted">Brak wpisów.</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}

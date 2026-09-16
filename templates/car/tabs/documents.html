@@ -1,0 +1,75 @@
+{# ============================================================
+   DOKUMENTY (PAGINACJA)
+   ============================================================ #}
+{% if tab == 'docs' %}
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Dokumenty</h5>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalDoc">Dodaj dokument</button>
+  </div>
+
+  <div class="card p-3">
+    <div class="text-muted small mb-2">
+      {{ docs_p.total }} wpisów · strona {{ docs_p.page }} / {{ docs_p.pages }}
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th style="width: 84px;">Podgląd</th>
+            <th>Plik</th>
+            <th style="width: 180px;">Kategoria</th>
+            <th>Notatka</th>
+            <th style="width: 260px;" class="text-end">Akcje</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in docs_p.items %}
+            {% set ext = (d.original_name.split('.')[-1] | lower) %}
+            {% set is_img = ext in ['jpg','jpeg','png','webp'] %}
+            {% set is_pdf = ext == 'pdf' %}
+            <tr>
+              <td>
+                {% if is_img %}
+                  <a target="_blank" href="{{ url_for('document_view', doc_id=d.id) }}">
+                    <img src="{{ url_for('document_view', doc_id=d.id) }}"
+                         alt="podgląd" class="img-thumbnail"
+                         style="width: 72px; height: 72px; object-fit: cover;">
+                  </a>
+                {% elif is_pdf %}
+                  <a class="btn btn-sm btn-outline-primary" target="_blank" href="{{ url_for('document_view', doc_id=d.id) }}">PDF</a>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+
+              <td>
+                <div class="fw-semibold">{{ d.original_name }}</div>
+                <div class="text-muted small">{{ d.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</div>
+              </td>
+
+              <td>{{ d.category or '—' }}</td>
+              <td>{{ d.note or '—' }}</td>
+
+              <td class="text-end">
+                <div class="d-inline-flex gap-2 flex-wrap justify-content-end">
+                  <a class="btn btn-sm btn-outline-primary" target="_blank" href="{{ url_for('document_view', doc_id=d.id) }}">Podgląd</a>
+                  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('document_download', doc_id=d.id) }}">Pobierz</a>
+                  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('document_edit', doc_id=d.id) }}">Edytuj</a>
+                  <form method="post" action="{{ url_for('document_delete', doc_id=d.id) }}" onsubmit="return confirm('Usunąć dokument?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm btn-outline-danger">Usuń</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="text-muted">Brak dokumentów.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {{ pager(docs_p, 'docs', 'docs_page') }}
+  </div>
+{% endif %}

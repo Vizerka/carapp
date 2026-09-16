@@ -1,0 +1,29 @@
+{% if tab == 'oc' %}
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Polisy OC</h5>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalOC">Dodaj polisę</button>
+  </div>
+
+  <div class="card p-3">
+    <ul class="small list-unstyled mb-0">
+      {% for p in oc %}
+        <li class="d-flex justify-content-between align-items-center border-top py-2">
+          <span>
+            {{ p.valid_from }} → {{ p.valid_to }}
+            {% if p.insurer %} — {{ p.insurer }}{% endif %}
+            {% if p.policy_no %} ({{ p.policy_no }}){% endif %}
+          </span>
+          <span class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('insurance_edit', policy_id=p.id) }}">Edytuj</a>
+            <form method="post" action="{{ url_for('insurance_delete', policy_id=p.id) }}" onsubmit="return confirm('Usunąć polisę?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger">Usuń</button>
+            </form>
+          </span>
+        </li>
+      {% else %}
+        <li class="text-muted">Brak wpisów.</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}

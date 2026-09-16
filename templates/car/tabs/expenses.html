@@ -1,0 +1,56 @@
+{% if tab == 'expenses' %}
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Pozostałe wydatki</h5>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalExpense">Dodaj wydatek</button>
+  </div>
+
+  <div class="card p-3">
+    <div class="text-muted small mb-2">
+      {{ expenses_p.total }} wpisów · strona {{ expenses_p.page }} / {{ expenses_p.pages }}
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Kategoria</th>
+            <th>Wydatek</th>
+            <th>Firma</th>
+            <th>Przebieg</th>
+            <th class="text-end">Kwota</th>
+            <th class="text-end">Akcje</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for expense in expenses_p.items %}
+            <tr>
+              <td>{{ expense.date }}</td>
+              <td>{{ expense_categories.get(expense.category, expense.category) }}</td>
+              <td>
+                <div class="fw-semibold">{{ expense.title }}</div>
+                {% if expense.note %}<div class="small text-muted">{{ expense.note }}</div>{% endif %}
+              </td>
+              <td>{{ expense.vendor or '—' }}</td>
+              <td>{% if expense.km is not none %}{{ expense.km }} km{% else %}—{% endif %}</td>
+              <td class="text-end fw-semibold">{{ "%.2f"|format(expense.amount|float) }} PLN</td>
+              <td class="text-end">
+                <div class="d-inline-flex gap-2">
+                  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('expense_edit', expense_id=expense.id) }}">Edytuj</a>
+                  <form method="post" action="{{ url_for('expense_delete', expense_id=expense.id) }}" onsubmit="return confirm('Usunąć wydatek?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-sm btn-outline-danger">Usuń</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="7" class="text-muted">Brak dodatkowych wydatków.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {{ pager(expenses_p, 'expenses', 'expense_page') }}
+  </div>
+{% endif %}

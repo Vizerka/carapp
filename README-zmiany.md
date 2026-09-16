@@ -11,6 +11,40 @@ Pole `unrecorded_refuels_since_last_full` jest częścią schematu zarządzanego
 przez migracje. Zaznacz przerwę ręcznie przy tankowaniu kończącym okres
 z brakującymi wpisami.
 
+# Dane aplikacji poza repozytorium
+
+Baza SQLite i dokumenty nie są już wersjonowane przez Git. Produkcyjnie ustaw:
+
+```ini
+[Service]
+Environment=CARAPP_DATA_DIR=/var/lib/carapp
+```
+
+Wtedy aplikacja korzysta z:
+
+```text
+/var/lib/carapp/cars.db
+/var/lib/carapp/uploads/
+```
+
+Bez `CARAPP_DATA_DIR` zachowany jest zgodny wstecznie katalog projektu. Można też
+osobno ustawić `DATABASE_URL` i `UPLOAD_FOLDER`.
+
+Przed pierwszym pobraniem wersji usuwającej pliki runtime z repo zatrzymaj usługę,
+skopiuj dane do `/var/lib/carapp`, porównaj kopię i dopiero potem oczyść katalog
+roboczy Gita. Szczegółową kolejność należy wykonać z instrukcji wdrożeniowej dla
+tej wersji — nie uruchamiaj aplikacji na pustej bazie.
+
+# Pełny koszt posiadania
+
+Zakładka **Wydatki** przechowuje koszty inne niż paliwo i serwis, m.in. OC,
+przeglądy, części, opony, podatki, parking i opłaty drogowe. Dashboard sumuje
+wszystkie trzy źródła i pokazuje rozbicie dla bieżącego roku, ostatnich 12
+miesięcy albo całej historii. Wydatków paliwowych i serwisowych nie wpisuj drugi
+raz w tej zakładce, bo są liczone bezpośrednio z tankowań i serwisu.
+
+Eksport oraz import backupu ZIP obejmują również wydatki.
+
 # Wdrożenie migracji
 
 Od tej wersji aplikacja używa Flask-Migrate/Alembic i nie modyfikuje bazy
@@ -32,4 +66,4 @@ flask --app app db current
 sudo systemctl status carapp.service --no-pager
 ```
 
-Oczekiwana rewizja bazy: `c41f64a0d7c2`.
+Oczekiwana rewizja bazy: `7d3e9a1b2c4f`.
