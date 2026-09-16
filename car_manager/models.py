@@ -235,3 +235,148 @@ class Expense(db.Model):
         "Car",
         backref=db.backref("expenses", lazy="dynamic", cascade="all, delete-orphan"),
     )
+
+
+class ServiceItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    service_id = db.Column(
+        db.Integer, db.ForeignKey("service_entry.id"), nullable=False, index=True
+    )
+    item_type = db.Column(db.String(16), nullable=False, default="part")
+    name = db.Column(db.String(160), nullable=False)
+    manufacturer = db.Column(db.String(120))
+    part_number = db.Column(db.String(120), index=True)
+    quantity = db.Column(db.Numeric(10, 2), nullable=False, default=1)
+    unit_price = db.Column(db.Numeric(10, 2))
+    note = db.Column(db.String(255))
+
+    service = db.relationship(
+        "ServiceEntry",
+        backref=db.backref("items", lazy="select", cascade="all, delete-orphan"),
+    )
+
+    @property
+    def total_cost(self):
+        if self.unit_price is None:
+            return None
+        return self.quantity * self.unit_price
+
+    @property
+    def car(self):
+        return self.service.car
+
+
+class TireSet(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    car_id = db.Column(db.Integer, db.ForeignKey("car.id"), nullable=False, index=True)
+    name = db.Column(db.String(120), nullable=False)
+    season = db.Column(db.String(16), nullable=False)
+    manufacturer = db.Column(db.String(120))
+    model = db.Column(db.String(120))
+    width = db.Column(db.Integer)
+    aspect_ratio = db.Column(db.Integer)
+    diameter = db.Column(db.Integer)
+    dot = db.Column(db.String(16))
+    rim = db.Column(db.String(120))
+    recommended_pressure = db.Column(db.String(64))
+    storage_location = db.Column(db.String(160))
+    note = db.Column(db.String(255))
+    active = db.Column(db.Boolean, default=True, nullable=False)
+
+    car = db.relationship(
+        "Car",
+        backref=db.backref("tire_sets", lazy="dynamic", cascade="all, delete-orphan"),
+    )
+
+    @property
+    def size_label(self):
+        if self.width and self.aspect_ratio and self.diameter:
+            return f"{self.width}/{self.aspect_ratio} R{self.diameter}"
+        return None
+
+
+class TireEvent(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tire_set_id = db.Column(
+        db.Integer, db.ForeignKey("tire_set.id"), nullable=False, index=True
+    )
+    date = db.Column(db.Date, nullable=False, index=True)
+    km = db.Column(db.Integer)
+    action = db.Column(db.String(24), nullable=False)
+    tread_fl = db.Column(db.Numeric(4, 1))
+    tread_fr = db.Column(db.Numeric(4, 1))
+    tread_rl = db.Column(db.Numeric(4, 1))
+    tread_rr = db.Column(db.Numeric(4, 1))
+    pressure = db.Column(db.String(64))
+    note = db.Column(db.String(255))
+
+    tire_set = db.relationship(
+        "TireSet",
+        backref=db.backref("events", lazy="dynamic", cascade="all, delete-orphan"),
+    )
+
+    @property
+    def car(self):
+        return self.tire_set.car
+
+
+class Modification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    car_id = db.Column(db.Integer, db.ForeignKey("car.id"), nullable=False, index=True)
+    title = db.Column(db.String(160), nullable=False)
+    description = db.Column(db.Text)
+    status = db.Column(db.String(24), nullable=False, default="planned", index=True)
+    started_date = db.Column(db.Date)
+    completed_date = db.Column(db.Date)
+    estimated_cost = db.Column(db.Numeric(10, 2))
+    actual_cost = db.Column(db.Numeric(10, 2))
+    note = db.Column(db.String(255))
+
+    car = db.relationship(
+        "Car",
+        backref=db.backref("modifications", lazy="dynamic", cascade="all, delete-orphan"),
+    )
+
+
+class ModificationTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    modification_id = db.Column(
+        db.Integer, db.ForeignKey("modification.id"), nullable=False, index=True
+    )
+    title = db.Column(db.String(160), nullable=False)
+    done = db.Column(db.Boolean, default=False, nullable=False)
+    position = db.Column(db.Integer, default=0, nullable=False)
+
+    modification = db.relationship(
+        "Modification",
+        backref=db.backref(
+            "tasks",
+            lazy="select",
+            cascade="all, delete-orphan",
+            order_by="ModificationTask.position, ModificationTask.id",
+        ),
+    )
+
+    @property
+    def car(self):
+        return self.modification.car
+
+
+class DocumentLink(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    document_id = db.Column(
+        db.Integer, db.ForeignKey("document.id"), nullable=False, index=True
+    )
+    target_type = db.Column(db.String(32), nullable=False, index=True)
+    target_id = db.Column(db.Integer, nullable=False, index=True)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "document_id", "target_type", "target_id", name="uq_document_link_target"
+        ),
+    )
+
+    document = db.relationship(
+        "Document",
+        backref=db.backref("links", lazy="select", cascade="all, delete-orphan"),
+    )

@@ -45,6 +45,34 @@ raz w tej zakładce, bo są liczone bezpośrednio z tankowań i serwisu.
 
 Eksport oraz import backupu ZIP obejmują również wydatki.
 
+# Historia, serwis, opony i projekty
+
+Zakładka **Historia** składa chronologiczną oś czasu bez kopiowania danych do
+osobnej tabeli. Obejmuje przebieg, tankowania, serwis, OC, przeglądy, wydatki,
+opony oraz modyfikacje.
+
+Wpis serwisowy może zawierać pozycje typu część, robocizna lub materiał. Każda
+pozycja przechowuje producenta, numer części, ilość i cenę jednostkową, a koszt
+serwisu jest wyliczany z pozycji.
+
+Moduł **Opony** przechowuje komplety, rozmiar, DOT, felgi, ciśnienie, miejsce
+przechowywania oraz historię założenia, zdjęcia i pomiarów bieżnika. Przebieg
+kompletu jest liczony z historii zdarzeń.
+
+Moduł **Modyfikacje** zawiera status, terminy, budżet, koszt rzeczywisty oraz
+checklistę. Koszt rzeczywisty modyfikacji jest doliczany do kosztu posiadania;
+nie należy wpisywać tej samej kwoty drugi raz jako ogólny wydatek.
+
+Dokument może zostać powiązany z serwisem, polisą OC, przeglądem albo
+modyfikacją. Backup w wersji 2 eksportuje i odtwarza wszystkie nowe relacje.
+
+# Home Assistant / MQTT
+
+Jedno urządzenie HA na samochód publikuje sensory przebiegu, terminów i liczby
+dni do OC/przeglądu, następnego serwisu, ostatniego i średniego spalania oraz
+kosztu bieżącego miesiąca. Dodane są też sensory binarne wygasającego OC,
+przeglądu i wymaganego serwisu.
+
 # Wdrożenie migracji
 
 Od tej wersji aplikacja używa Flask-Migrate/Alembic i nie modyfikuje bazy
@@ -66,4 +94,4 @@ flask --app app db current
 sudo systemctl status carapp.service --no-pager
 ```
 
-Oczekiwana rewizja bazy: `7d3e9a1b2c4f`.
+Oczekiwana rewizja bazy: `a82f1c9d4e77`.

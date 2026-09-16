@@ -1,0 +1,49 @@
+{% if tab == 'mods' %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Modyfikacje / build log</h5>
+    <a class="btn btn-primary" href="{{ url_for('modification_new', car_id=car.id) }}">Dodaj projekt</a>
+  </div>
+
+  <div class="row g-3">
+    {% for modification in modifications_p.items %}
+      {% set done = modification.tasks | selectattr('done') | list | length %}
+      {% set total = modification.tasks | length %}
+      <div class="col-md-6">
+        <div class="card p-3 h-100">
+          <div class="d-flex justify-content-between gap-2">
+            <div>
+              <h5 class="mb-1">{{ modification.title }}</h5>
+              <span class="badge text-bg-{{ 'success' if modification.status == 'done' else 'secondary' }}">
+                {{ modification_statuses.get(modification.status, modification.status) }}
+              </span>
+            </div>
+            <div class="d-flex gap-1">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('modification_edit', modification_id=modification.id) }}">Edytuj</a>
+              <form method="post" action="{{ url_for('modification_delete', modification_id=modification.id) }}" onsubmit="return confirm('Usunąć projekt?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-danger">Usuń</button>
+              </form>
+            </div>
+          </div>
+          {% if modification.description %}<p class="small mt-3 mb-2">{{ modification.description }}</p>{% endif %}
+          <div class="small text-muted">
+            Zadania: {{ done }}/{{ total }}
+            {% if modification.actual_cost is not none %} · koszt: {{ "%.2f"|format(modification.actual_cost|float) }} PLN{% endif %}
+          </div>
+          {% if total %}
+            <div class="progress mt-2" style="height:8px;">
+              <div class="progress-bar" style="width:{{ (done * 100 / total)|round }}%"></div>
+            </div>
+          {% endif %}
+          {% set linked = target_documents.get(('modification', modification.id), []) %}
+          {% if linked %}
+            <div class="small mt-3">📎 {% for doc in linked %}<a href="{{ url_for('document_view', doc_id=doc.id) }}" target="_blank">{{ doc.original_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</div>
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <div class="col-12"><div class="alert alert-secondary">Brak projektów modyfikacji.</div></div>
+    {% endfor %}
+  </div>
+  {{ pager(modifications_p, 'mods', 'mods_page') }}
+{% endif %}

@@ -22,6 +22,15 @@
             {% if s.cost %} — {{ s.cost }} PLN{% endif %}
             {% if s.vendor %} — <em>{{ s.vendor }}</em>{% endif %}
             {% if s.note %} — {{ s.note }}{% endif %}
+            {% if s.items %}
+              <div class="small text-muted mt-1">
+                {% for item in s.items %}
+                  {{ item.name }}{% if item.part_number %} [{{ item.part_number }}]{% endif %}{% if not loop.last %} · {% endif %}
+                {% endfor %}
+              </div>
+            {% endif %}
+            {% set linked = target_documents.get(('service', s.id), []) %}
+            {% if linked %}<div class="small">📎 {% for doc in linked %}<a href="{{ url_for('document_view', doc_id=doc.id) }}" target="_blank">{{ doc.original_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</div>{% endif %}
           </span>
           <span class="d-flex gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('service_edit', service_id=s.id) }}">Edytuj</a>

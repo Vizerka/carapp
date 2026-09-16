@@ -7,6 +7,7 @@ from .models import InsurancePolicy
 from .helpers import parse_date
 from .validators import validate_insurance_interval
 from .access import get_car_or_404, get_owned_entry_or_404
+from .document_links import delete_links_for_target
 
 
 def init_routes(app):
@@ -67,6 +68,7 @@ def init_routes(app):
     def insurance_delete(policy_id):
         policy = get_owned_entry_or_404(InsurancePolicy, policy_id)
         car_id = policy.car_id
+        delete_links_for_target("insurance", policy.id)
         db.session.delete(policy)
         db.session.commit()
         flash("Usunięto polisę OC 🗑️", "success")

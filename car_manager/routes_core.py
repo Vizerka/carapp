@@ -13,12 +13,17 @@ from sqlalchemy.exc import IntegrityError
 from .extensions import db
 from .models import (
     Car, OdometerEntry, InsurancePolicy, TechInspection,
-    ServiceEntry, FuelEntry, Document, ServiceInterval, Expense
+    ServiceEntry, FuelEntry, Document, ServiceInterval, Expense, Modification,
+    TireEvent, TireSet
 )
-from .helpers import parse_date, parse_decimal, compute_interval_status
-from .fuel_consumption import consumption_series
+from .helpers import parse_date, compute_interval_status
 from .access import accessible_cars_query, get_car_or_404
 from .expense_categories import EXPENSE_CATEGORIES
+from .document_links import document_link_label, document_target_options
+from .routes_modifications import STATUSES as MODIFICATION_STATUSES
+from .routes_tires import SEASONS as TIRE_SEASONS
+from .statistics import fuel_statistics, tire_set_mileage
+from .timeline import build_timeline
 
 def init_routes(app):
     @app.get("/")
@@ -126,12 +131,15 @@ def init_routes(app):
         docs_page = request.args.get("docs_page", 1, type=int)
         odo_page = request.args.get("odo_page", 1, type=int)
         expense_page = request.args.get("expense_page", 1, type=int)
+        mods_page = request.args.get("mods_page", 1, type=int)
+        timeline_page = request.args.get("timeline_page", 1, type=int)
         
         PER_PAGE_ODO = 30
         PER_PAGE_FUEL = 20
         PER_PAGE_SVC  = 20
         PER_PAGE_DOCS = 15
         PER_PAGE_EXPENSES = 20
+        PER_PAGE_MODS = 15
 
         odo_p = (
             car.odometer_entries
@@ -168,6 +176,20 @@ def init_routes(app):
             .paginate(page=expense_page, per_page=PER_PAGE_EXPENSES, error_out=False)
         )
 
+        modifications_p = (
+            car.modifications
+            .order_by(desc(Modification.id))
+            .paginate(page=mods_page, per_page=PER_PAGE_MODS, error_out=False)
+        )
+
+        tire_sets = car.tire_sets.order_by(TireSet.active.desc(), TireSet.name.asc()).all()
+        tire_events = {
+            tire_set.id: tire_set.events.order_by(
+                desc(TireEvent.date), desc(TireEvent.id)
+            ).all()
+            for tire_set in tire_sets
+        }
+
         # --- Paginacja: tankowania ---
         fills_p = (
             car.fuel_entries
@@ -177,6 +199,7 @@ def init_routes(app):
 
         # --- Do wykresu spalania potrzebujemy ASC (pełny->pełny) ---
         fills_asc = car.fuel_entries.order_by(FuelEntry.date.asc(), FuelEntry.id.asc()).all()
+        fuel_stats = fuel_statistics(fills_asc)
 
         # --- Pełny koszt posiadania + okres raportu ---
         today = date.today()
@@ -199,24 +222,34 @@ def init_routes(app):
         expense_query = db.session.query(func.sum(Expense.amount)).filter(
             Expense.car_id == car.id
         )
+        modification_query = db.session.query(func.sum(Modification.actual_cost)).filter(
+            Modification.car_id == car.id, Modification.actual_cost.isnot(None)
+        )
 
         if cost_since is not None:
             fuel_query = fuel_query.filter(FuelEntry.date >= cost_since)
             service_query = service_query.filter(ServiceEntry.date >= cost_since)
             expense_query = expense_query.filter(Expense.date >= cost_since)
+            modification_query = modification_query.filter(
+                func.coalesce(Modification.completed_date, Modification.started_date) >= cost_since
+            )
 
         fuel_total = fuel_query.scalar()
         service_total = service_query.scalar()
         expense_total = expense_query.scalar()
+        modification_total = modification_query.scalar()
 
         fuel_total = Decimal(fuel_total) if fuel_total is not None else None
         service_total = Decimal(service_total) if service_total is not None else None
         expense_total = Decimal(expense_total) if expense_total is not None else None
+        modification_total = Decimal(modification_total) if modification_total is not None else None
 
         total_cost = None
-        if any(value is not None for value in (fuel_total, service_total, expense_total)):
+        if any(value is not None for value in (fuel_total, service_total, expense_total, modification_total)):
             total_cost = sum(
-                (value or Decimal("0") for value in (fuel_total, service_total, expense_total)),
+                (value or Decimal("0") for value in (
+                    fuel_total, service_total, expense_total, modification_total
+                )),
                 Decimal("0"),
             )
 
@@ -236,6 +269,11 @@ def init_routes(app):
         cost_breakdown = [
             {"key": "fuel", "label": "Paliwo", "amount": fuel_total or Decimal("0")},
             {"key": "service", "label": "Serwis", "amount": service_total or Decimal("0")},
+            {
+                "key": "modification",
+                "label": "Modyfikacje",
+                "amount": modification_total or Decimal("0"),
+            },
             *expense_breakdown,
         ]
         cost_breakdown = [row for row in cost_breakdown if row["amount"] > 0]
@@ -270,7 +308,8 @@ def init_routes(app):
                     cost_per_km = (total_cost / Decimal(dist))
 
         # Pełne tankowanie z przerwą zamyka poprzedni odcinek bez wyniku.
-        cons_labels, cons_values = consumption_series(fills_asc)
+        cons_labels = fuel_stats["labels"]
+        cons_values = fuel_stats["values"]
 
         # --- Interwały (bez zmian) ---
         intervals = (
@@ -290,6 +329,26 @@ def init_routes(app):
         order = {"due": 0, "soon": 1, "ok": 2, "unknown": 3}
         interval_reminders.sort(key=lambda t: order.get(t[1]["status"], 9))
 
+        timeline_kind = (request.args.get("timeline_kind") or "").strip() or None
+        timeline_p = build_timeline(
+            car,
+            page=timeline_page,
+            kind=timeline_kind,
+        )
+        current_km_for_tires = current_km
+        tire_mileages = {
+            tire_set.id: tire_set_mileage(tire_set, current_km_for_tires)
+            for tire_set in tire_sets
+        }
+        document_links = {
+            document.id: [document_link_label(link) for link in document.links]
+            for document in docs_p.items
+        }
+        target_documents = {}
+        for document in car.documents.all():
+            for link in document.links:
+                target_documents.setdefault((link.target_type, link.target_id), []).append(document)
+
         return render_template(
             "car_detail.html",
             car=car,
@@ -306,10 +365,20 @@ def init_routes(app):
             docs_p=docs_p,
             fills_p=fills_p,
             expenses_p=expenses_p,
+            modifications_p=modifications_p,
+            tire_sets=tire_sets,
+            tire_mileages=tire_mileages,
+            tire_events=tire_events,
+            timeline_p=timeline_p,
+            timeline_kind=timeline_kind,
 
             fuel_total=fuel_total,
             service_total=service_total,
             expense_total=expense_total,
+            modification_total=modification_total,
+            additional_total=(expense_total or Decimal("0")) + (
+                modification_total or Decimal("0")
+            ),
             total_cost=total_cost,
             distance=distance,
             cost_per_km=cost_per_km,
@@ -319,11 +388,20 @@ def init_routes(app):
 
             cons_labels=cons_labels,
             cons_values=cons_values,
+            cons_rolling=fuel_stats["rolling_5"],
+            fuel_stats=fuel_stats,
+            fuel_price_labels=fuel_stats["price_labels"],
+            fuel_price_values=fuel_stats["price_values"],
 
             intervals=intervals,
             interval_reminders=interval_reminders,
             current_km=current_km,
             odo_p=odo_p,
+            document_target_options=document_target_options(car),
+            document_links=document_links,
+            target_documents=target_documents,
+            modification_statuses=MODIFICATION_STATUSES,
+            tire_seasons=TIRE_SEASONS,
         )
 
     @app.post("/cars/<int:car_id>/delete")

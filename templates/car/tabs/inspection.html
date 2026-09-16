@@ -13,6 +13,8 @@
             {% if i.result %} — {{ i.result }}{% endif %}
             {% if i.station %} @ {{ i.station }}{% endif %}
             {% if i.note %} — <em>{{ i.note }}</em>{% endif %}
+            {% set linked = target_documents.get(('inspection', i.id), []) %}
+            {% if linked %}<div class="small">📎 {% for doc in linked %}<a href="{{ url_for('document_view', doc_id=doc.id) }}" target="_blank">{{ doc.original_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</div>{% endif %}
           </span>
           <span class="d-flex gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('inspection_edit', ins_id=i.id) }}">Edytuj</a>

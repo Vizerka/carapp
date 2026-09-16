@@ -11,6 +11,7 @@ from car_manager.models import Car, User
 def app(tmp_path, monkeypatch):
     database = tmp_path / "test.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{database}")
+    monkeypatch.setenv("CARAPP_DATA_DIR", str(tmp_path))
     monkeypatch.delenv("MQTT_HOST", raising=False)
     monkeypatch.delenv("MQTT_USERNAME", raising=False)
     monkeypatch.delenv("MQTT_PASSWORD", raising=False)

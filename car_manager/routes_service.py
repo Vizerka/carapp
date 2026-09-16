@@ -14,6 +14,8 @@ from .helpers import (
 )
 from .validators import validate_odometer
 from .access import get_car_or_404, get_owned_entry_or_404
+from .document_links import delete_links_for_target
+from .routes_service_items import ITEM_TYPES
 
 
 def init_routes(app):
@@ -116,12 +118,13 @@ def init_routes(app):
             flash("Zapisano serwis ✅", "success")
             return redirect(url_for("car_detail", car_id=car.id))
 
-        return render_template("service_form.html", car=car, s=s)
+        return render_template("service_form.html", car=car, s=s, item_types=ITEM_TYPES)
 
     @app.post("/service/<int:service_id>/delete")
     def service_delete(service_id):
         s = get_owned_entry_or_404(ServiceEntry, service_id)
         car_id = s.car_id
+        delete_links_for_target("service", s.id)
         delete_source_odometer(source_type="service", source_id=s.id)
         db.session.delete(s)
         db.session.commit()

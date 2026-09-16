@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Zdarzenie opon{% endblock %}
+{% block content %}
+<h2 class="mb-3">{{ tire_set.name }} — zdarzenie</h2>
+<form method="post" class="card p-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="row g-3">
+    <div class="col-md-3"><label class="form-label">Data</label><input type="date" name="date" class="form-control" value="{{ event.date.isoformat() if event else '' }}" required></div>
+    <div class="col-md-3"><label class="form-label">Rodzaj</label><select name="action" class="form-select">{% for key,label in actions.items() %}<option value="{{ key }}" {% if event and event.action == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><label class="form-label">Przebieg</label><input type="number" name="km" class="form-control" value="{{ event.km or '' if event else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Ciśnienie</label><input name="pressure" class="form-control" value="{{ event.pressure or '' if event else '' }}"></div>
+    {% for field,label in [('tread_fl','LP'),('tread_fr','PP'),('tread_rl','LT'),('tread_rr','PT')] %}<div class="col-md-2"><label class="form-label">Bieżnik {{ label }} [mm]</label><input name="{{ field }}" class="form-control" value="{{ event[field] or '' if event else '' }}"></div>{% endfor %}
+    <div class="col-md-4"><label class="form-label">Notatka</label><input name="note" class="form-control" value="{{ event.note or '' if event else '' }}"></div>
+    <div class="col-12"><button class="btn btn-primary">Zapisz</button> <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=tire_set.car_id, tab='tires') }}">Anuluj</a></div>
+  </div>
+</form>
+{% endblock %}

@@ -12,6 +12,8 @@
             {{ p.valid_from }} → {{ p.valid_to }}
             {% if p.insurer %} — {{ p.insurer }}{% endif %}
             {% if p.policy_no %} ({{ p.policy_no }}){% endif %}
+            {% set linked = target_documents.get(('insurance', p.id), []) %}
+            {% if linked %}<div class="small">📎 {% for doc in linked %}<a href="{{ url_for('document_view', doc_id=doc.id) }}" target="_blank">{{ doc.original_name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</div>{% endif %}
           </span>
           <span class="d-flex gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('insurance_edit', policy_id=p.id) }}">Edytuj</a>
