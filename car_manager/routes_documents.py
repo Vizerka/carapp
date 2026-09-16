@@ -10,6 +10,7 @@ from .extensions import db
 from .models import Document
 from .helpers import allowed_file, ensure_car_upload_dir
 from .access import get_car_or_404, get_owned_entry_or_404
+from .document_links import document_target_options, set_document_target
 
 
 def init_routes(app):
@@ -46,10 +47,19 @@ def init_routes(app):
             note=(request.form.get("note") or "").strip() or None,
         )
         db.session.add(doc)
+        db.session.flush()
+        if not set_document_target(doc, request.form.get("target")):
+            db.session.rollback()
+            try:
+                os.remove(os.path.join(upload_dir, stored))
+            except OSError:
+                pass
+            flash("Wybrany wpis nie należy do tego samochodu.", "danger")
+            return redirect(url_for("car_detail", car_id=car.id, tab="docs"))
         db.session.commit()
 
         flash("Dodano dokument 📎", "success")
-        return redirect(url_for("car_detail", car_id=car.id))
+        return redirect(url_for("car_detail", car_id=car.id, tab="docs"))
 
     @app.get("/documents/<int:doc_id>/download")
     def document_download(doc_id):
@@ -100,6 +110,10 @@ def init_routes(app):
         if request.method == "POST":
             doc.category = (request.form.get("category") or "").strip() or None
             doc.note = (request.form.get("note") or "").strip() or None
+            if not set_document_target(doc, request.form.get("target")):
+                db.session.rollback()
+                flash("Wybrany wpis nie należy do tego samochodu.", "danger")
+                return redirect(url_for("document_edit", doc_id=doc.id))
 
             file = request.files.get("file")
             if file and file.filename:
@@ -150,4 +164,12 @@ def init_routes(app):
             flash("Zapisano zmiany dokumentu ✅", "success")
             return redirect(url_for("car_detail", car_id=doc.car_id))
 
-        return render_template("document_form.html", doc=doc)
+        current_target = ""
+        if doc.links:
+            current_target = f"{doc.links[0].target_type}:{doc.links[0].target_id}"
+        return render_template(
+            "document_form.html",
+            doc=doc,
+            target_options=document_target_options(doc.car),
+            current_target=current_target,
+        )

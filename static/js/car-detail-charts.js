@@ -13,6 +13,7 @@
         const el = document.getElementById(canvasId);
         if (!el) return;
         const isConsumption = canvasId === 'consChart';
+        const extendToToday = canvasId === 'odoChart';
         const controls = el.closest('[data-time-chart]');
         const fixedAxis = controls.querySelector('[data-chart-axis]');
         const viewport = controls.querySelector('[data-chart-viewport]');
@@ -24,6 +25,7 @@
 
         const labels = JSON.parse(el.dataset.labels || '[]'); // ["2026-01-22", ...]
         const values = JSON.parse(el.dataset.values || '[]'); // [136000, ...]
+        const averageValues = JSON.parse(el.dataset.average || '[]');
         if (!labels.length || !values.length) return;
 
         // parsing:false wymaga liczbowych znaczników czasu.
@@ -36,17 +38,23 @@
 
         if (!points.length) return;
 
+        const averagePoints = labels.map((d, i) => {
+          const dt = luxon.DateTime.fromISO(String(d));
+          const value = averageValues[i];
+          return { x: dt.isValid ? dt.toMillis() : NaN, y: value === null ? null : num(value) };
+        }).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+
         // Przebieg można dociągnąć do dziś; pomiar spalania kończy się przy tankowaniu.
         const last = points[points.length - 1];
         const todayStart = luxon.DateTime.local().startOf('day').toMillis();
-        if (!isConsumption && last.x < todayStart) {
+        if (extendToToday && last.x < todayStart) {
           points.push({ x: luxon.DateTime.local().toMillis(), y: last.y });
         }
 
         const minX = points[0].x;
         const maxX = Math.max(
           minX + 24 * 60 * 60 * 1000, // co najmniej jeden dzień przy pojedynczym pomiarze
-          isConsumption ? last.x : luxon.DateTime.local().endOf('day').toMillis(),
+          extendToToday ? luxon.DateTime.local().endOf('day').toMillis() : last.x,
           points[points.length - 1].x
         );
 
@@ -84,7 +92,14 @@
               clip: 8,
               pointRadius: 4,
               pointHitRadius: 8
-            }]
+            }].concat(averagePoints.length ? [{
+              label: 'Średnia krocząca (5)',
+              data: averagePoints,
+              tension: 0.25,
+              borderDash: [6, 4],
+              pointRadius: 0,
+              borderWidth: 2
+            }] : [])
           },
           options: {
             parsing: false, // data jest już w formacie {x(ms), y}
@@ -184,4 +199,5 @@
 
       drawTimeChart('odoChart', 'Przebieg [km]');
       drawTimeChart('consChart', 'L/100km');
+      drawTimeChart('priceChart', 'Cena paliwa [PLN/L]');
     });

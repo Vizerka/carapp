@@ -182,6 +182,12 @@
           <div class="col-md-5"><input type="file" name="file" class="form-control" required accept=".pdf,image/*"></div>
           <div class="col-md-3"><input type="text" name="category" class="form-control" placeholder="kategoria (np. OC, Faktura)"></div>
           <div class="col-md-4"><input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)"></div>
+          <div class="col-12">
+            <select name="target" class="form-select">
+              <option value="">Bez powiązania</option>
+              {% for option in document_target_options %}<option value="{{ option.value }}">{{ option.label }}</option>{% endfor %}
+            </select>
+          </div>
           <div class="col-12"><div class="form-text">Dozwolone: pdf, jpg, jpeg, png, webp (max 16MB).</div></div>
         </div>
       </div>

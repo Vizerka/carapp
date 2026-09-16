@@ -32,6 +32,14 @@
   </div>
 
   <div class="col-12">
+    <label class="form-label">Powiąż z wpisem</label>
+    <select name="target" class="form-select">
+      <option value="">Bez powiązania</option>
+      {% for option in target_options %}<option value="{{ option.value }}" {% if current_target == option.value %}selected{% endif %}>{{ option.label }}</option>{% endfor %}
+    </select>
+  </div>
+
+  <div class="col-12">
     <label class="form-label">Podmień plik (opcjonalnie)</label>
     <input type="file" name="file" class="form-control" accept=".pdf,image/*">
     <div class="form-text">Jeśli wybierzesz plik — stary zostanie zastąpiony. Dozwolone: pdf, jpg, jpeg, png, webp.</div>

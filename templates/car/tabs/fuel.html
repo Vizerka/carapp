@@ -7,6 +7,62 @@
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalFuel">Dodaj tankowanie</button>
   </div>
 
+  <div class="row g-2 mb-3">
+    {% set cards = [
+      ('Ostatnie spalanie', fuel_stats.last, 'L/100 km'),
+      ('Średnia z 5', fuel_stats.average_5, 'L/100 km'),
+      ('Średnia z 10', fuel_stats.average_10, 'L/100 km'),
+      ('Średnia 12 miesięcy', fuel_stats.average_12m, 'L/100 km'),
+      ('Średnia całości', fuel_stats.average_all, 'L/100 km'),
+      ('Minimum / maksimum', none, '')
+    ] %}
+    {% for label,value,unit in cards %}
+      <div class="col-md-4 col-xl-2"><div class="card p-2 h-100">
+        <div class="small text-muted">{{ label }}</div>
+        <div class="fw-semibold">
+          {% if label == 'Minimum / maksimum' %}
+            {% if fuel_stats.minimum is not none %}{{ "%.2f"|format(fuel_stats.minimum) }} / {{ "%.2f"|format(fuel_stats.maximum) }}{% else %}—{% endif %}
+          {% elif value is not none %}{{ "%.2f"|format(value) }} {{ unit }}{% else %}—{% endif %}
+        </div>
+      </div></div>
+    {% endfor %}
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-4"><div class="card p-3 h-100">
+      <div class="small text-muted">Średnia cena paliwa</div>
+      <div class="fs-5 fw-semibold">{% if fuel_stats.average_price is not none %}{{ "%.3f"|format(fuel_stats.average_price) }} PLN/L{% else %}—{% endif %}</div>
+      <div class="small mt-2">Najtańsza stacja: {% if fuel_stats.cheapest_station %}<b>{{ fuel_stats.cheapest_station[0] }}</b> ({{ "%.3f"|format(fuel_stats.cheapest_station[1]|float) }} PLN/L){% else %}—{% endif %}</div>
+    </div></div>
+    <div class="col-lg-4"><div class="card p-3 h-100">
+      <div class="small text-muted">W tym roku</div>
+      <div class="fs-5 fw-semibold">{{ "%.2f"|format(fuel_stats.year_liters) }} L</div>
+      <div class="small">{{ "%.2f"|format(fuel_stats.year_cost) }} PLN</div>
+    </div></div>
+    <div class="col-lg-4"><div class="card p-3 h-100">
+      <div class="small text-muted">Najdroższe tankowanie</div>
+      {% if fuel_stats.highest_fill %}<div class="fs-5 fw-semibold">{{ "%.2f"|format(fuel_stats.highest_fill.total_cost|float) }} PLN</div><div class="small">{{ fuel_stats.highest_fill.date }} · {{ fuel_stats.highest_fill.liters }} L</div>{% else %}<div>—</div>{% endif %}
+    </div></div>
+  </div>
+
+  {% if fuel_price_values %}
+  <div class="card p-3 mb-3" data-time-chart>
+    <h5 class="mb-3">Cena paliwa [PLN/L]</h5>
+    <div class="d-flex" style="min-width:0;">
+      <div data-chart-axis style="flex:none; position:relative; width:72px; height:240px; border-right:1px solid var(--bs-border-color);"></div>
+      <div data-chart-viewport tabindex="0" style="flex:1; min-width:0; overflow-x:auto; overflow-y:hidden;">
+        <div data-chart-plot style="position:relative; height:240px; min-width:100%;"><canvas id="priceChart" data-labels='{{ fuel_price_labels|tojson }}' data-values='{{ fuel_price_values|tojson }}'></canvas></div>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+      <select class="form-select form-select-sm w-auto" data-chart-period><option value="6">6 miesięcy</option><option value="12" selected>1 rok</option><option value="36">3 lata</option><option value="all">Całość</option></select>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-chart-latest>Najnowsze</button>
+      <span class="small text-muted ms-sm-auto" data-chart-dates></span>
+    </div>
+    <input type="range" class="form-range mt-2 mb-0" min="0" max="1000" value="1000" data-chart-scroll>
+  </div>
+  {% endif %}
+
   <div class="card p-3">
     <div class="text-muted small mb-2">
       {{ fills_p.total }} wpisów · strona {{ fills_p.page }} / {{ fills_p.pages }}

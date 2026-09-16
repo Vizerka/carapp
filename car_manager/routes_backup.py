@@ -14,7 +14,8 @@ from flask_login import login_required, current_user
 from .extensions import db
 from .models import (
     Car, OdometerEntry, InsurancePolicy, TechInspection,
-    ServiceEntry, FuelEntry, ServiceInterval, Document, Expense
+    ServiceEntry, FuelEntry, ServiceInterval, Document, Expense,
+    DocumentLink, Modification, ModificationTask, ServiceItem, TireEvent, TireSet
 )
 from .helpers import (
     _model_to_dict, _dict_to_model_kwargs,
@@ -48,7 +49,7 @@ def init_routes(app):
             "meta": {
                 "app": "car_manager",
                 "exported_at": datetime.utcnow().isoformat(),
-                "version": "1.0.0",
+                "version": "2.0.0",
             },
             "cars": [_model_to_dict(c) for c in Car.query.order_by(Car.id.asc()).all()],
             "odometer_entries": [_model_to_dict(x) for x in OdometerEntry.query.order_by(OdometerEntry.id.asc()).all()],
@@ -58,7 +59,13 @@ def init_routes(app):
             "fuel_entries": [_model_to_dict(x) for x in FuelEntry.query.order_by(FuelEntry.id.asc()).all()],
             "service_intervals": [_model_to_dict(x) for x in ServiceInterval.query.order_by(ServiceInterval.id.asc()).all()],
             "expenses": [_model_to_dict(x) for x in Expense.query.order_by(Expense.id.asc()).all()],
+            "service_items": [_model_to_dict(x) for x in ServiceItem.query.order_by(ServiceItem.id.asc()).all()],
+            "tire_sets": [_model_to_dict(x) for x in TireSet.query.order_by(TireSet.id.asc()).all()],
+            "tire_events": [_model_to_dict(x) for x in TireEvent.query.order_by(TireEvent.id.asc()).all()],
+            "modifications": [_model_to_dict(x) for x in Modification.query.order_by(Modification.id.asc()).all()],
+            "modification_tasks": [_model_to_dict(x) for x in ModificationTask.query.order_by(ModificationTask.id.asc()).all()],
             "documents": [_model_to_dict(x) for x in Document.query.order_by(Document.id.asc()).all()],
+            "document_links": [_model_to_dict(x) for x in DocumentLink.query.order_by(DocumentLink.id.asc()).all()],
         }
 
         json_bytes = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
@@ -179,6 +186,21 @@ def init_routes(app):
                 (expense.vendor or "").strip(),
             )
 
+        def key_tire_set(tire_set: TireSet):
+            return (
+                _k(tire_set.car_id),
+                (tire_set.name or "").strip(),
+                (tire_set.season or "").strip(),
+                (tire_set.dot or "").strip(),
+            )
+
+        def key_modification(modification: Modification):
+            return (
+                _k(modification.car_id),
+                (modification.title or "").strip(),
+                _k(modification.started_date),
+            )
+
         # ---------
         # KEY FUNCS (KWARGS -> tuple)
         # ---------
@@ -234,6 +256,21 @@ def init_routes(app):
                 _q(w.get("amount"), "0.01"),
                 ((w.get("title") or "")).strip(),
                 ((w.get("vendor") or "")).strip(),
+            )
+
+        def key_tire_set_kwargs(w):
+            return (
+                _k(w.get("car_id")),
+                ((w.get("name") or "")).strip(),
+                ((w.get("season") or "")).strip(),
+                ((w.get("dot") or "")).strip(),
+            )
+
+        def key_modification_kwargs(w):
+            return (
+                _k(w.get("car_id")),
+                ((w.get("title") or "")).strip(),
+                _k(w.get("started_date")),
             )
 
         # ----------------------------
@@ -345,12 +382,21 @@ def init_routes(app):
                     return count, object_map
 
                 odo_n, odo_map = import_rows(OdometerEntry, "odometer_entries", key_odometer, key_odometer_kwargs)
-                oc_n, _ = import_rows(InsurancePolicy, "insurance_policies", key_insurance, key_insurance_kwargs)
-                ti_n, _ = import_rows(TechInspection, "tech_inspections", key_inspection, key_inspection_kwargs)
+                oc_n, insurance_map = import_rows(InsurancePolicy, "insurance_policies", key_insurance, key_insurance_kwargs)
+                ti_n, inspection_map = import_rows(TechInspection, "tech_inspections", key_inspection, key_inspection_kwargs)
                 svc_n, service_map = import_rows(ServiceEntry, "service_entries", key_service, key_service_kwargs)
                 fuel_n, fuel_map = import_rows(FuelEntry, "fuel_entries", key_fuel, key_fuel_kwargs)
                 iv_n, _ = import_rows(ServiceInterval, "service_intervals", key_interval, key_interval_kwargs)
                 expense_n, _ = import_rows(Expense, "expenses", key_expense, key_expense_kwargs)
+                tire_set_n, tire_set_map = import_rows(
+                    TireSet, "tire_sets", key_tire_set, key_tire_set_kwargs
+                )
+                modification_n, modification_map = import_rows(
+                    Modification,
+                    "modifications",
+                    key_modification,
+                    key_modification_kwargs,
+                )
 
                 # Nowe ID tankowań/serwisów mogą być inne niż w backupie.
                 # Po flushu odtwarzamy polimorficzne powiązania przebiegu na
@@ -381,16 +427,84 @@ def init_routes(app):
                         odo.source_type = source_type
                         odo.source_id = source.id
 
+                def import_children(model_cls, rows_key, parent_field, parent_map, key_func):
+                    existing = {key_func(obj) for obj in model_cls.query.all()}
+                    count = 0
+                    object_map = {}
+                    for raw_row in payload.get(rows_key, []):
+                        old_parent_id = raw_row.get(parent_field)
+                        parent = parent_map.get(old_parent_id)
+                        if parent is None:
+                            continue
+                        kwargs = _dict_to_model_kwargs(model_cls, raw_row)
+                        kwargs[parent_field] = parent.id
+                        key = key_func(type("Imported", (), kwargs)())
+                        if key in existing:
+                            current = next(
+                                (obj for obj in model_cls.query.all() if key_func(obj) == key),
+                                None,
+                            )
+                            if isinstance(raw_row.get("id"), int) and current is not None:
+                                object_map[raw_row["id"]] = current
+                            continue
+                        obj = model_cls(**kwargs)
+                        db.session.add(obj)
+                        db.session.flush()
+                        existing.add(key)
+                        if isinstance(raw_row.get("id"), int):
+                            object_map[raw_row["id"]] = obj
+                        count += 1
+                    return count, object_map
+
+                service_item_n, _ = import_children(
+                    ServiceItem,
+                    "service_items",
+                    "service_id",
+                    service_map,
+                    lambda item: (
+                        item.service_id,
+                        item.item_type,
+                        item.name,
+                        item.part_number or "",
+                        _q(item.quantity, "0.01"),
+                        _q(item.unit_price, "0.01"),
+                    ),
+                )
+                tire_event_n, _ = import_children(
+                    TireEvent,
+                    "tire_events",
+                    "tire_set_id",
+                    tire_set_map,
+                    lambda event: (
+                        event.tire_set_id,
+                        _k(event.date),
+                        event.action,
+                        event.km,
+                    ),
+                )
+                modification_task_n, _ = import_children(
+                    ModificationTask,
+                    "modification_tasks",
+                    "modification_id",
+                    modification_map,
+                    lambda task: (
+                        task.modification_id,
+                        task.title,
+                        task.position,
+                    ),
+                )
+
                 # 3) dokumenty + pliki (dedupe)
                 docs = payload.get("documents", [])
                 doc_n = 0
+                document_map = {}
 
                 existing_stored: dict[int, set[str]] = {}
 
-                existing_doc_keys = set(
-                    (_k(d.car_id), _k(d.original_name), _k(d.category), _k(d.uploaded_at))
+                existing_doc_keys = {
+                    (_k(d.car_id), _k(d.original_name), _k(d.category), _k(d.uploaded_at)): d
                     for d in Document.query.all()
-                )
+                }
 
                 for d in docs:
                     old_car_id = d.get("car_id")
@@ -417,6 +531,8 @@ def init_routes(app):
 
                     dk = (_k(new_car_id), _k(original), _k(kwargs.get("category")), _k(kwargs.get("uploaded_at")))
                     if dk in existing_doc_keys:
+                        if isinstance(d.get("id"), int):
+                            document_map[d["id"]] = existing_doc_keys[dk]
                         continue
 
                     zip_path = f"uploads/{old_car_id}/{stored}"
@@ -434,9 +550,40 @@ def init_routes(app):
 
                     doc = Document(**kwargs)
                     db.session.add(doc)
+                    db.session.flush()
 
-                    existing_doc_keys.add(dk)
+                    existing_doc_keys[dk] = doc
+                    if isinstance(d.get("id"), int):
+                        document_map[d["id"]] = doc
                     doc_n += 1
+
+                target_maps = {
+                    "service": service_map,
+                    "insurance": insurance_map,
+                    "inspection": inspection_map,
+                    "modification": modification_map,
+                }
+                existing_link_keys = {
+                    (link.document_id, link.target_type, link.target_id)
+                    for link in DocumentLink.query.all()
+                }
+                document_link_n = 0
+                for raw_link in payload.get("document_links", []):
+                    document = document_map.get(raw_link.get("document_id"))
+                    target_type = raw_link.get("target_type")
+                    target = target_maps.get(target_type, {}).get(raw_link.get("target_id"))
+                    if document is None or target is None or document.car_id != target.car_id:
+                        continue
+                    key = (document.id, target_type, target.id)
+                    if key in existing_link_keys:
+                        continue
+                    db.session.add(DocumentLink(
+                        document_id=document.id,
+                        target_type=target_type,
+                        target_id=target.id,
+                    ))
+                    existing_link_keys.add(key)
+                    document_link_n += 1
 
                 db.session.commit()
 
@@ -444,7 +591,9 @@ def init_routes(app):
                 flash(
                     f"Auta: {len(car_id_map)} | Odo: {odo_n} | OC: {oc_n} | Przeglądy: {ti_n} | "
                     f"Serwis: {svc_n} | Tankowania: {fuel_n} | Interwały: {iv_n} | "
-                    f"Wydatki: {expense_n} | Dokumenty: {doc_n}",
+                    f"Wydatki: {expense_n} | Części: {service_item_n} | "
+                    f"Opony: {tire_set_n}/{tire_event_n} | Modyfikacje: {modification_n}/{modification_task_n} | "
+                    f"Dokumenty: {doc_n} | Powiązania: {document_link_n}",
                     "info",
                 )
                 return redirect(url_for("list_cars"))

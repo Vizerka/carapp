@@ -94,10 +94,13 @@ def create_app():
     from .routes_insurance import init_routes as init_oc
     from .routes_inspection import init_routes as init_ti
     from .routes_service import init_routes as init_svc
+    from .routes_service_items import init_routes as init_service_items
     from .routes_fuel import init_routes as init_fuel
     from .routes_documents import init_routes as init_docs
     from .routes_intervals import init_routes as init_iv
     from .routes_expenses import init_routes as init_expenses
+    from .routes_tires import init_routes as init_tires
+    from .routes_modifications import init_routes as init_modifications
     from .routes_backup import init_routes as init_backup
 
     init_auth(app)
@@ -108,10 +111,13 @@ def create_app():
     init_oc(app)
     init_ti(app)
     init_svc(app)
+    init_service_items(app)
     init_fuel(app)
     init_docs(app)
     init_iv(app)
     init_expenses(app)
+    init_tires(app)
+    init_modifications(app)
     init_backup(app)
 
     with app.app_context():

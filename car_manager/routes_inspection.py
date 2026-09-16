@@ -7,6 +7,7 @@ from .models import TechInspection
 from .helpers import parse_date
 from .validators import validate_inspection_dates
 from .access import get_car_or_404, get_owned_entry_or_404
+from .document_links import delete_links_for_target
 
 
 def init_routes(app):
@@ -68,6 +69,7 @@ def init_routes(app):
     def inspection_delete(ins_id):
         ins = get_owned_entry_or_404(TechInspection, ins_id)
         car_id = ins.car_id
+        delete_links_for_target("inspection", ins.id)
         db.session.delete(ins)
         db.session.commit()
         flash("Usunięto przegląd 🗑️", "success")

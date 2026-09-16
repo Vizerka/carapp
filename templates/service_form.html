@@ -22,7 +22,8 @@
 
   <div class="col-md-3">
     <label class="form-label">Koszt (PLN)</label>
-    <input type="text" name="cost" class="form-control" value="{{ s.cost or '' }}" placeholder="np. 123.45">
+    <input type="text" name="cost" class="form-control" value="{{ s.cost or '' }}" placeholder="np. 123.45" {% if s.items %}readonly{% endif %}>
+    {% if s.items %}<div class="form-text">Liczone automatycznie z pozycji poniżej.</div>{% endif %}
   </div>
 
   <div class="col-md-3">
@@ -45,4 +46,34 @@
     <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=car.id) }}">Anuluj</a>
   </div>
 </form>
+
+<div class="card p-3 mt-4">
+  <h5>Pozycje serwisu / części</h5>
+  <div class="table-responsive mb-3">
+    <table class="table table-sm align-middle">
+      <thead><tr><th>Typ</th><th>Nazwa</th><th>Producent / numer</th><th>Ilość</th><th class="text-end">Cena</th><th></th></tr></thead>
+      <tbody>
+        {% for item in s.items %}
+          <tr>
+            <td>{{ item_types.get(item.item_type, item.item_type) }}</td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.manufacturer or '—' }}{% if item.part_number %} · <code>{{ item.part_number }}</code>{% endif %}</td>
+            <td>{{ item.quantity }}</td>
+            <td class="text-end">{% if item.total_cost is not none %}{{ "%.2f"|format(item.total_cost|float) }} PLN{% else %}—{% endif %}</td>
+            <td class="text-end"><div class="d-inline-flex gap-1">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('service_item_edit', item_id=item.id) }}">Edytuj</a>
+              <form method="post" action="{{ url_for('service_item_delete', item_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger">Usuń</button></form>
+            </div></td>
+          </tr>
+        {% else %}<tr><td colspan="6" class="text-muted">Brak rozpisanych pozycji.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" action="{{ url_for('service_item_new', service_id=s.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% set item = none %}
+    {% include "service_item_fields.html" %}
+    <button class="btn btn-primary mt-3">Dodaj pozycję</button>
+  </form>
+</div>
 {% endblock %}

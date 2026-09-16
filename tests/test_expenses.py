@@ -150,3 +150,8 @@ def test_backup_export_contains_expenses(app, client):
 
     assert len(payload["expenses"]) == 1
     assert payload["expenses"][0]["title"] == "Komplet opon"
+    for key in (
+        "service_items", "tire_sets", "tire_events", "modifications",
+        "modification_tasks", "document_links",
+    ):
+        assert key in payload

@@ -70,23 +70,29 @@
 
 <ul class="nav nav-tabs mb-3">
   <li class="nav-item"><a class="nav-link {% if tab=='dash' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='dash') }}">Dashboard</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab=='history' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='history') }}">Historia</a></li>
   <li class="nav-item"><a class="nav-link {% if tab=='odo' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='odo') }}">Przebieg</a></li>
   <li class="nav-item"><a class="nav-link {% if tab=='oc' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='oc') }}">OC</a></li>
   <li class="nav-item"><a class="nav-link {% if tab=='ti' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='ti') }}">Przegląd</a></li>
   <li class="nav-item"><a class="nav-link {% if tab=='fuel' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='fuel') }}">Tankowania</a></li>
   <li class="nav-item"><a class="nav-link {% if tab=='iv' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='iv') }}">Interwały</a></li>
   <li class="nav-item"><a class="nav-link {% if tab=='svc' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='svc') }}">Serwis</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab=='tires' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='tires') }}">Opony</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab=='mods' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='mods') }}">Modyfikacje</a></li>
   <li class="nav-item"><a class="nav-link {% if tab=='expenses' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='expenses') }}">Wydatki</a></li>
   <li class="nav-item"><a class="nav-link {% if tab=='docs' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='docs') }}">Dokumenty</a></li>
 </ul>
 
 {% include "car/tabs/dashboard.html" %}
+{% include "car/tabs/history.html" %}
 {% include "car/tabs/odometer.html" %}
 {% include "car/tabs/insurance.html" %}
 {% include "car/tabs/inspection.html" %}
 {% include "car/tabs/fuel.html" %}
 {% include "car/tabs/intervals.html" %}
 {% include "car/tabs/service.html" %}
+{% include "car/tabs/tires.html" %}
+{% include "car/tabs/modifications.html" %}
 {% include "car/tabs/expenses.html" %}
 {% include "car/tabs/documents.html" %}
 {% include "car/modals.html" %}
