@@ -4,8 +4,9 @@ from datetime import date
 from flask import request, redirect, url_for, flash, render_template
 
 from .extensions import db
-from .models import Car, ServiceInterval
+from .models import ServiceInterval
 from .helpers import parse_date
+from .access import get_car_or_404, get_owned_entry_or_404
 
 
 def init_routes(app):
@@ -15,7 +16,7 @@ def init_routes(app):
 
     @app.post("/cars/<int:car_id>/intervals/new")
     def interval_new(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
 
         name = (request.form.get("name") or "").strip()
         if not name:
@@ -43,7 +44,7 @@ def init_routes(app):
 
     @app.route("/intervals/<int:interval_id>/edit", methods=["GET", "POST"])
     def interval_edit(interval_id):
-        iv = ServiceInterval.query.get_or_404(interval_id)
+        iv = get_owned_entry_or_404(ServiceInterval, interval_id)
         car_id = iv.car_id
 
         def to_int(x):
@@ -67,7 +68,7 @@ def init_routes(app):
 
     @app.post("/intervals/<int:interval_id>/delete")
     def interval_delete(interval_id):
-        iv = ServiceInterval.query.get_or_404(interval_id)
+        iv = get_owned_entry_or_404(ServiceInterval, interval_id)
         car_id = iv.car_id
         db.session.delete(iv)
         db.session.commit()
@@ -76,8 +77,8 @@ def init_routes(app):
 
     @app.post("/intervals/<int:interval_id>/mark_done")
     def interval_mark_done(interval_id):
-        iv = ServiceInterval.query.get_or_404(interval_id)
-        car = Car.query.get_or_404(iv.car_id)
+        iv = get_owned_entry_or_404(ServiceInterval, interval_id)
+        car = iv.car
 
         when = parse_date(request.form.get("date")) or date.today()
         km_raw = (request.form.get("km") or "").strip()

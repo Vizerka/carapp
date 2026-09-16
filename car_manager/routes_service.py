@@ -4,9 +4,16 @@ from datetime import date
 from flask import render_template, request, redirect, url_for, flash
 
 from .extensions import db
-from .models import Car, ServiceEntry, ServiceInterval
-from .helpers import parse_date, parse_decimal, upsert_odometer_for_date
+from .models import ServiceEntry, ServiceInterval
+from .helpers import (
+    delete_source_odometer,
+    parse_date,
+    parse_decimal,
+    source_odometer_id,
+    sync_source_odometer,
+)
 from .validators import validate_odometer
+from .access import get_car_or_404, get_owned_entry_or_404
 
 
 def init_routes(app):
@@ -16,7 +23,7 @@ def init_routes(app):
 
     @app.post("/cars/<int:car_id>/service/new")
     def service_new(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
 
         when = parse_date(request.form.get("date"))
         km = int(request.form.get("km") or 0) or None
@@ -43,12 +50,15 @@ def init_routes(app):
                 return redirect(url_for("car_detail", car_id=car.id))
 
         db.session.add(entry)
+        db.session.flush()
 
         if km is not None:
-            upsert_odometer_for_date(
+            sync_source_odometer(
                 car_id=car.id,
                 when=when,
                 km=km,
+                source_type="service",
+                source_id=entry.id,
                 note=f"Serwis: {entry.title}",
             )
 
@@ -67,17 +77,40 @@ def init_routes(app):
 
     @app.route("/service/<int:service_id>/edit", methods=["GET", "POST"])
     def service_edit(service_id):
-        s = ServiceEntry.query.get_or_404(service_id)
+        s = get_owned_entry_or_404(ServiceEntry, service_id)
         car = s.car
 
         if request.method == "POST":
-            s.date = parse_date(request.form.get("date"))
-            s.km = int(request.form.get("km") or 0) or None
-            s.title = (request.form.get("title") or "").strip()
+            when = parse_date(request.form.get("date"))
+            km = int(request.form.get("km") or 0) or None
+            title = (request.form.get("title") or "").strip()
+
+            if km is not None:
+                odo_id = source_odometer_id(source_type="service", source_id=s.id)
+                ok, msg = validate_odometer(car.id, when, km, odo_id)
+                if not ok:
+                    flash(msg, "danger")
+                    return redirect(url_for("service_edit", service_id=s.id))
+
+            s.date = when
+            s.km = km
+            s.title = title
             s.description = (request.form.get("description") or "").strip() or None
             s.vendor = (request.form.get("vendor") or "").strip() or None
             s.note = (request.form.get("note") or "").strip() or None
             s.cost = parse_decimal(request.form.get("cost"))
+
+            if km is None:
+                delete_source_odometer(source_type="service", source_id=s.id)
+            else:
+                sync_source_odometer(
+                    car_id=car.id,
+                    when=when,
+                    km=km,
+                    source_type="service",
+                    source_id=s.id,
+                    note=f"Serwis: {title}",
+                )
 
             db.session.commit()
             flash("Zapisano serwis ✅", "success")
@@ -87,8 +120,9 @@ def init_routes(app):
 
     @app.post("/service/<int:service_id>/delete")
     def service_delete(service_id):
-        s = ServiceEntry.query.get_or_404(service_id)
+        s = get_owned_entry_or_404(ServiceEntry, service_id)
         car_id = s.car_id
+        delete_source_odometer(source_type="service", source_id=s.id)
         db.session.delete(s)
         db.session.commit()
         flash("Usunięto wpis serwisowy 🗑️", "success")

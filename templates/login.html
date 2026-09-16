@@ -3,6 +3,7 @@
 <h2>Logowanie</h2>
 
 <form method="post" action="{{ url_for('login_post', next=next) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="next" value="{{ next }}">
 
   <div>

@@ -20,6 +20,7 @@
 </div>
 
 <form method="post" enctype="multipart/form-data" class="row g-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="col-md-4">
     <label class="form-label">Kategoria</label>
     <input name="category" class="form-control" value="{{ doc.category or '' }}" placeholder="np. OC, Faktura">

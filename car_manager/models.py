@@ -48,7 +48,7 @@ class MqttPublishedCar(db.Model):
 @login_manager.user_loader
 def load_user(user_id: str):
     try:
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
     except Exception:
         return None
 
@@ -93,6 +93,17 @@ class OdometerEntry(db.Model):
     date = db.Column(db.Date, nullable=False)
     km = db.Column(db.Integer, nullable=False)
     note = db.Column(db.String(255))
+    source_type = db.Column(db.String(32), nullable=True, index=True)
+    source_id = db.Column(db.Integer, nullable=True, index=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("source_type", "source_id", name="uq_odometer_source"),
+        db.CheckConstraint(
+            "(source_type IS NULL AND source_id IS NULL) OR "
+            "(source_type IS NOT NULL AND source_id IS NOT NULL)",
+            name="ck_odometer_source_pair",
+        ),
+    )
 
     car = db.relationship(
         "Car",

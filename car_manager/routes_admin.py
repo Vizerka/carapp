@@ -8,7 +8,14 @@ from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 
 from .extensions import db
-from .models import User
+from .models import Car, User
+
+
+def _selected_cars():
+    ids = {int(value) for value in request.form.getlist("car_ids") if value.isdigit()}
+    if not ids:
+        return []
+    return Car.query.filter(Car.id.in_(ids)).order_by(Car.make, Car.model).all()
 
 
 def admin_required(view):
@@ -63,12 +70,14 @@ def init_routes(app: Flask) -> None:
                 is_active=is_active,
                 password_hash=generate_password_hash(password),
             )
+            u.cars = _selected_cars()
             db.session.add(u)
             db.session.commit()
             flash("Użytkownik dodany ✅", "success")
             return redirect(url_for("admin_users"))
 
-        return render_template("admin/user_form.html", mode="new", u=None)
+        cars = Car.query.order_by(Car.make, Car.model).all()
+        return render_template("admin/user_form.html", mode="new", u=None, cars=cars)
 
     @app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
     @admin_required
@@ -107,6 +116,7 @@ def init_routes(app: Flask) -> None:
             u.email = email
             u.is_admin = is_admin
             u.is_active = is_active
+            u.cars = _selected_cars()
 
             if password:
                 if len(password) < 6:
@@ -118,7 +128,8 @@ def init_routes(app: Flask) -> None:
             flash("Zapisano ✅", "success")
             return redirect(url_for("admin_users"))
 
-        return render_template("admin/user_form.html", mode="edit", u=u)
+        cars = Car.query.order_by(Car.make, Car.model).all()
+        return render_template("admin/user_form.html", mode="edit", u=u, cars=cars)
 
     @app.post("/admin/users/<int:user_id>/delete")
     @admin_required

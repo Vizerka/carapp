@@ -276,8 +276,11 @@ def init_routes(app):
                 def import_rows(model_cls, rows_key: str, key_func_obj, key_func_kwargs, car_id_field: str = "car_id"):
                     rows = payload.get(rows_key, [])
                     count = 0
-
-                    existing = build_existing_keys(model_cls, key_func_obj)
+                    object_map = {}
+                    existing = {
+                        key_func_obj(obj): obj
+                        for obj in model_cls.query.all()
+                    }
 
                     for r in rows:
                         old_car_id = r.get(car_id_field)
@@ -286,6 +289,11 @@ def init_routes(app):
 
                         kwargs = _dict_to_model_kwargs(model_cls, r)
                         kwargs[car_id_field] = car_id_map[old_car_id]
+                        # source_id wskazuje ID z eksportowanej bazy. Relację
+                        # odtwarzamy niżej dopiero po zmapowaniu Fuel/Service.
+                        if model_cls is OdometerEntry:
+                            kwargs["source_type"] = None
+                            kwargs["source_id"] = None
 
                         k = key_func_kwargs(kwargs)
                         if k in existing:
@@ -302,21 +310,54 @@ def init_routes(app):
                                     if key_fuel(old) == k:
                                         old.unrecorded_refuels_since_last_full = True
                                         break
+                            if isinstance(r.get("id"), int):
+                                object_map[r["id"]] = existing[k]
                             continue
 
                         obj = model_cls(**kwargs)
                         db.session.add(obj)
-                        existing.add(k)
+                        existing[k] = obj
+                        if isinstance(r.get("id"), int):
+                            object_map[r["id"]] = obj
                         count += 1
 
-                    return count
+                    return count, object_map
 
-                odo_n = import_rows(OdometerEntry, "odometer_entries", key_odometer, key_odometer_kwargs)
-                oc_n  = import_rows(InsurancePolicy, "insurance_policies", key_insurance, key_insurance_kwargs)
-                ti_n  = import_rows(TechInspection, "tech_inspections", key_inspection, key_inspection_kwargs)
-                svc_n = import_rows(ServiceEntry, "service_entries", key_service, key_service_kwargs)
-                fuel_n = import_rows(FuelEntry, "fuel_entries", key_fuel, key_fuel_kwargs)
-                iv_n   = import_rows(ServiceInterval, "service_intervals", key_interval, key_interval_kwargs)
+                odo_n, odo_map = import_rows(OdometerEntry, "odometer_entries", key_odometer, key_odometer_kwargs)
+                oc_n, _ = import_rows(InsurancePolicy, "insurance_policies", key_insurance, key_insurance_kwargs)
+                ti_n, _ = import_rows(TechInspection, "tech_inspections", key_inspection, key_inspection_kwargs)
+                svc_n, service_map = import_rows(ServiceEntry, "service_entries", key_service, key_service_kwargs)
+                fuel_n, fuel_map = import_rows(FuelEntry, "fuel_entries", key_fuel, key_fuel_kwargs)
+                iv_n, _ = import_rows(ServiceInterval, "service_intervals", key_interval, key_interval_kwargs)
+
+                # Nowe ID tankowań/serwisów mogą być inne niż w backupie.
+                # Po flushu odtwarzamy polimorficzne powiązania przebiegu na
+                # podstawie map stary obiekt -> nowy/istniejący obiekt.
+                db.session.flush()
+                for raw_odo in payload.get("odometer_entries", []):
+                    source_type = raw_odo.get("source_type")
+                    old_source_id = raw_odo.get("source_id")
+                    old_odo_id = raw_odo.get("id")
+                    if source_type == "fuel":
+                        source = fuel_map.get(old_source_id)
+                    elif source_type == "service":
+                        source = service_map.get(old_source_id)
+                    else:
+                        continue
+
+                    odo = odo_map.get(old_odo_id)
+                    if source is None or odo is None:
+                        continue
+
+                    already_linked = OdometerEntry.query.filter_by(
+                        source_type=source_type,
+                        source_id=source.id,
+                    ).one_or_none()
+                    if already_linked is not None:
+                        continue
+                    if odo.source_type is None and odo.source_id is None:
+                        odo.source_type = source_type
+                        odo.source_id = source.id
 
                 # 3) dokumenty + pliki (dedupe)
                 docs = payload.get("documents", [])

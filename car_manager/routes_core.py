@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from flask import render_template, request, redirect, url_for, flash
+from flask_login import current_user
 from sqlalchemy import desc, func
 from sqlalchemy.exc import IntegrityError
 
@@ -16,11 +17,12 @@ from .models import (
 )
 from .helpers import parse_date, parse_decimal, compute_interval_status
 from .fuel_consumption import consumption_series
+from .access import accessible_cars_query, get_car_or_404
 
 def init_routes(app):
     @app.get("/")
     def dashboard():
-        cars = Car.query.order_by(Car.make, Car.model).all()
+        cars = accessible_cars_query().order_by(Car.make, Car.model).all()
 
         upcoming_days = 60
         today = date.today()
@@ -63,7 +65,7 @@ def init_routes(app):
 
     @app.get("/cars")
     def list_cars():
-        cars = Car.query.order_by(Car.make, Car.model).all()
+        cars = accessible_cars_query().order_by(Car.make, Car.model).all()
         return render_template("cars.html", cars=cars)
 
     @app.route("/cars/new", methods=["GET", "POST"])
@@ -77,6 +79,8 @@ def init_routes(app):
                 reg_number=(request.form.get("reg_number") or "").strip().upper() or None,
                 first_registration=parse_date(request.form.get("first_registration"))
             )
+            if not current_user.is_admin:
+                car.owners.append(current_user)
             db.session.add(car)
             try:
                 db.session.commit()
@@ -90,7 +94,7 @@ def init_routes(app):
 
     @app.route("/cars/<int:car_id>/edit", methods=["GET", "POST"])
     def car_edit(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
         if request.method == "POST":
             car.make = (request.form.get("make") or "").strip()
             car.model = (request.form.get("model") or "").strip()
@@ -111,7 +115,7 @@ def init_routes(app):
 
     @app.get("/cars/<int:car_id>")
     def car_detail(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
 
         # --- TAB + paginacja (oddzielna dla każdej listy) ---
         tab = request.args.get("tab", "dash")
@@ -247,7 +251,7 @@ def init_routes(app):
 
     @app.post("/cars/<int:car_id>/delete")
     def car_delete(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
         upload_dir = os.path.join(app.config["UPLOAD_FOLDER"], str(car.id))
 
         try:

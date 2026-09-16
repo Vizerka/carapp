@@ -7,8 +7,9 @@ from flask import request, redirect, url_for, flash, send_from_directory, abort,
 from werkzeug.utils import secure_filename
 
 from .extensions import db
-from .models import Car, Document
+from .models import Document
 from .helpers import allowed_file, ensure_car_upload_dir
+from .access import get_car_or_404, get_owned_entry_or_404
 
 
 def init_routes(app):
@@ -18,7 +19,7 @@ def init_routes(app):
 
     @app.post("/cars/<int:car_id>/documents/upload")
     def document_upload(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
         file = request.files.get("file")
 
         if not file or file.filename == "":
@@ -52,7 +53,7 @@ def init_routes(app):
 
     @app.get("/documents/<int:doc_id>/download")
     def document_download(doc_id):
-        doc = Document.query.get_or_404(doc_id)
+        doc = get_owned_entry_or_404(Document, doc_id)
         upload_dir = ensure_car_upload_dir(doc.car_id)
         path = os.path.join(upload_dir, doc.stored_name)
         if not os.path.isfile(path):
@@ -66,7 +67,7 @@ def init_routes(app):
 
     @app.get("/documents/<int:doc_id>/view")
     def document_view(doc_id):
-        doc = Document.query.get_or_404(doc_id)
+        doc = get_owned_entry_or_404(Document, doc_id)
         upload_dir = ensure_car_upload_dir(doc.car_id)
         path = os.path.join(upload_dir, doc.stored_name)
         if not os.path.isfile(path):
@@ -75,7 +76,7 @@ def init_routes(app):
 
     @app.post("/documents/<int:doc_id>/delete")
     def document_delete(doc_id):
-        doc = Document.query.get_or_404(doc_id)
+        doc = get_owned_entry_or_404(Document, doc_id)
         car_id = doc.car_id
         upload_dir = ensure_car_upload_dir(car_id)
         path = os.path.join(upload_dir, doc.stored_name)
@@ -94,7 +95,7 @@ def init_routes(app):
 
     @app.route("/documents/<int:doc_id>/edit", methods=["GET", "POST"])
     def document_edit(doc_id):
-        doc = Document.query.get_or_404(doc_id)
+        doc = get_owned_entry_or_404(Document, doc_id)
 
         if request.method == "POST":
             doc.category = (request.form.get("category") or "").strip() or None
