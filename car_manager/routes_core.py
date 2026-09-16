@@ -13,11 +13,12 @@ from sqlalchemy.exc import IntegrityError
 from .extensions import db
 from .models import (
     Car, OdometerEntry, InsurancePolicy, TechInspection,
-    ServiceEntry, FuelEntry, Document, ServiceInterval
+    ServiceEntry, FuelEntry, Document, ServiceInterval, Expense
 )
 from .helpers import parse_date, parse_decimal, compute_interval_status
 from .fuel_consumption import consumption_series
 from .access import accessible_cars_query, get_car_or_404
+from .expense_categories import EXPENSE_CATEGORIES
 
 def init_routes(app):
     @app.get("/")
@@ -124,11 +125,13 @@ def init_routes(app):
         svc_page  = request.args.get("svc_page", 1, type=int)
         docs_page = request.args.get("docs_page", 1, type=int)
         odo_page = request.args.get("odo_page", 1, type=int)
+        expense_page = request.args.get("expense_page", 1, type=int)
         
         PER_PAGE_ODO = 30
         PER_PAGE_FUEL = 20
         PER_PAGE_SVC  = 20
         PER_PAGE_DOCS = 15
+        PER_PAGE_EXPENSES = 20
 
         odo_p = (
             car.odometer_entries
@@ -159,6 +162,12 @@ def init_routes(app):
             .paginate(page=docs_page, per_page=PER_PAGE_DOCS, error_out=False)
         )
 
+        expenses_p = (
+            car.expenses
+            .order_by(desc(Expense.date), desc(Expense.id))
+            .paginate(page=expense_page, per_page=PER_PAGE_EXPENSES, error_out=False)
+        )
+
         # --- Paginacja: tankowania ---
         fills_p = (
             car.fuel_entries
@@ -169,28 +178,92 @@ def init_routes(app):
         # --- Do wykresu spalania potrzebujemy ASC (pełny->pełny) ---
         fills_asc = car.fuel_entries.order_by(FuelEntry.date.asc(), FuelEntry.id.asc()).all()
 
-        # --- SUMY kosztów (bez zmian) ---
-        fuel_total = db.session.query(func.sum(FuelEntry.total_cost)).filter(
+        # --- Pełny koszt posiadania + okres raportu ---
+        today = date.today()
+        cost_period = request.args.get("cost_period", "all")
+        if cost_period not in {"all", "year", "12m"}:
+            cost_period = "all"
+
+        cost_since = None
+        if cost_period == "year":
+            cost_since = date(today.year, 1, 1)
+        elif cost_period == "12m":
+            cost_since = today - timedelta(days=365)
+
+        fuel_query = db.session.query(func.sum(FuelEntry.total_cost)).filter(
             FuelEntry.car_id == car.id, FuelEntry.total_cost.isnot(None)
-        ).scalar()
-
-        service_total = db.session.query(func.sum(ServiceEntry.cost)).filter(
+        )
+        service_query = db.session.query(func.sum(ServiceEntry.cost)).filter(
             ServiceEntry.car_id == car.id, ServiceEntry.cost.isnot(None)
-        ).scalar()
+        )
+        expense_query = db.session.query(func.sum(Expense.amount)).filter(
+            Expense.car_id == car.id
+        )
 
-        if fuel_total is not None:
-            fuel_total = Decimal(fuel_total)
-        if service_total is not None:
-            service_total = Decimal(service_total)
+        if cost_since is not None:
+            fuel_query = fuel_query.filter(FuelEntry.date >= cost_since)
+            service_query = service_query.filter(ServiceEntry.date >= cost_since)
+            expense_query = expense_query.filter(Expense.date >= cost_since)
+
+        fuel_total = fuel_query.scalar()
+        service_total = service_query.scalar()
+        expense_total = expense_query.scalar()
+
+        fuel_total = Decimal(fuel_total) if fuel_total is not None else None
+        service_total = Decimal(service_total) if service_total is not None else None
+        expense_total = Decimal(expense_total) if expense_total is not None else None
 
         total_cost = None
-        if fuel_total is not None or service_total is not None:
-            total_cost = (fuel_total or Decimal("0")) + (service_total or Decimal("0"))
+        if any(value is not None for value in (fuel_total, service_total, expense_total)):
+            total_cost = sum(
+                (value or Decimal("0") for value in (fuel_total, service_total, expense_total)),
+                Decimal("0"),
+            )
+
+        expense_breakdown_query = db.session.query(
+            Expense.category, func.sum(Expense.amount)
+        ).filter(Expense.car_id == car.id)
+        if cost_since is not None:
+            expense_breakdown_query = expense_breakdown_query.filter(Expense.date >= cost_since)
+        expense_breakdown = [
+            {
+                "key": category,
+                "label": EXPENSE_CATEGORIES.get(category, category),
+                "amount": Decimal(amount),
+            }
+            for category, amount in expense_breakdown_query.group_by(Expense.category).all()
+        ]
+        cost_breakdown = [
+            {"key": "fuel", "label": "Paliwo", "amount": fuel_total or Decimal("0")},
+            {"key": "service", "label": "Serwis", "amount": service_total or Decimal("0")},
+            *expense_breakdown,
+        ]
+        cost_breakdown = [row for row in cost_breakdown if row["amount"] > 0]
+        cost_breakdown.sort(key=lambda row: row["amount"], reverse=True)
 
         distance = None
         cost_per_km = None
-        if len(odo_values) >= 2:
-            dist = odo_values[-1] - odo_values[0]
+        if cost_since is None:
+            cost_odo_entries = car.odometer_entries.order_by(
+                OdometerEntry.date.asc(), OdometerEntry.id.asc()
+            ).all()
+        else:
+            baseline = car.odometer_entries.filter(
+                OdometerEntry.date < cost_since
+            ).order_by(
+                OdometerEntry.date.desc(), OdometerEntry.id.desc()
+            ).first()
+            cost_odo_entries = car.odometer_entries.filter(
+                OdometerEntry.date >= cost_since
+            ).order_by(
+                OdometerEntry.date.asc(), OdometerEntry.id.asc()
+            ).all()
+            if baseline is not None:
+                cost_odo_entries.insert(0, baseline)
+
+        cost_odo_values = [entry.km for entry in cost_odo_entries]
+        if len(cost_odo_values) >= 2:
+            dist = cost_odo_values[-1] - cost_odo_values[0]
             if dist > 0:
                 distance = dist
                 if total_cost is not None:
@@ -207,7 +280,6 @@ def init_routes(app):
             .all()
         )
 
-        today = date.today()
         current_km = car.last_odometer.km if car.last_odometer else None
 
         interval_reminders = []
@@ -233,12 +305,17 @@ def init_routes(app):
             services_p=services_p,
             docs_p=docs_p,
             fills_p=fills_p,
+            expenses_p=expenses_p,
 
             fuel_total=fuel_total,
             service_total=service_total,
+            expense_total=expense_total,
             total_cost=total_cost,
             distance=distance,
             cost_per_km=cost_per_km,
+            cost_period=cost_period,
+            cost_breakdown=cost_breakdown,
+            expense_categories=EXPENSE_CATEGORIES,
 
             cons_labels=cons_labels,
             cons_values=cons_values,

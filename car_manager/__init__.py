@@ -11,6 +11,7 @@ from .cli import register_cli
 
 def create_app():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    data_dir = os.path.abspath(os.environ.get("CARAPP_DATA_DIR", base_dir))
 
     app = Flask(
         __name__,
@@ -24,11 +25,15 @@ def create_app():
     # jak chcesz absolutną ścieżkę do DB (polecam, mniej cyrków z cwd):
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
         "DATABASE_URL",
-        "sqlite:///" + os.path.join(base_dir, "cars.db"),
+        "sqlite:///" + os.path.join(data_dir, "cars.db"),
     )
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    app.config["UPLOAD_FOLDER"] = os.path.join(base_dir, "uploads")
+    app.config["CARAPP_DATA_DIR"] = data_dir
+    app.config["UPLOAD_FOLDER"] = os.path.abspath(
+        os.environ.get("UPLOAD_FOLDER", os.path.join(data_dir, "uploads"))
+    )
+    os.makedirs(data_dir, exist_ok=True)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
     app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -92,6 +97,7 @@ def create_app():
     from .routes_fuel import init_routes as init_fuel
     from .routes_documents import init_routes as init_docs
     from .routes_intervals import init_routes as init_iv
+    from .routes_expenses import init_routes as init_expenses
     from .routes_backup import init_routes as init_backup
 
     init_auth(app)
@@ -105,6 +111,7 @@ def create_app():
     init_fuel(app)
     init_docs(app)
     init_iv(app)
+    init_expenses(app)
     init_backup(app)
 
     with app.app_context():

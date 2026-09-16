@@ -1,0 +1,230 @@
+{# ============================================================
+   MODALE – Twoje (z jedną poprawką: auto price_per_l)
+   ============================================================ #}
+
+{# --- Modal: ODO --- #}
+<div class="modal fade" id="modalOdo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" action="{{ url_for('odometer_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Dodaj przebieg</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body vstack gap-2">
+        <input type="hidden" name="__tab" value="odo">
+        <input type="date" name="date" class="form-control" required>
+        <input type="number" name="km" class="form-control" placeholder="km" min="0" step="1" required>
+        <input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Anuluj</button>
+        <button class="btn btn-primary" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# --- Modal: OC --- #}
+<div class="modal fade" id="modalOC" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" action="{{ url_for('insurance_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Dodaj polisę OC</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body vstack gap-2">
+        <input type="date" name="valid_from" class="form-control" required>
+        <input type="date" name="valid_to" class="form-control" required>
+        <input type="text" name="insurer" class="form-control" placeholder="ubezpieczyciel">
+        <input type="text" name="policy_no" class="form-control" placeholder="nr polisy">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Anuluj</button>
+        <button class="btn btn-primary" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# --- Modal: TI --- #}
+<div class="modal fade" id="modalTI" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" action="{{ url_for('inspection_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Dodaj przegląd</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body vstack gap-2">
+        <input type="date" name="date" class="form-control" required>
+        <input type="date" name="valid_to" class="form-control" required>
+        <input type="text" name="result" class="form-control" placeholder="wynik (np. pozytywny)">
+        <input type="text" name="station" class="form-control" placeholder="stacja">
+        <input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Anuluj</button>
+        <button class="btn btn-primary" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# --- Modal: Fuel --- #}
+<div class="modal fade" id="modalFuel" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form class="modal-content" method="post" action="{{ url_for('fuel_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Dodaj tankowanie</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-md-3"><input type="date" name="date" class="form-control" required></div>
+          <div class="col-md-3"><input type="number" name="km" class="form-control" placeholder="km" min="0" step="1" required></div>
+          <div class="col-md-3"><input type="text" name="liters" class="form-control" placeholder="litry (np. 42,5)" required></div>
+          <div class="col-md-3"><select name="full_tank" class="form-select"><option value="1" selected>Pełny bak</option><option value="0">Niepełny</option></select></div>
+
+          <div class="col-12" id="newFuelHistory">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="unrecorded_refuels_since_last_full" id="newFuelUnrecorded">
+              <label class="form-check-label" for="newFuelUnrecorded">Od poprzedniego pełnego tankowania były niezapisane tankowania</label>
+            </div>
+            <div class="form-text">Spalanie za ten okres zostanie pominięte. Ten pełny bak rozpocznie nowy pomiar.</div>
+          </div>
+
+          <div class="col-md-4"><input type="text" name="total_cost" class="form-control" placeholder="koszt PLN (opc.)"></div>
+          <div class="col-md-4"><input type="text" name="price_per_l" class="form-control" placeholder="PLN/L (auto)"></div>
+          <div class="col-md-4"><input type="text" name="station" class="form-control" placeholder="stacja (opc.)"></div>
+
+          <div class="col-12"><input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)"></div>
+          <div class="col-12"><div class="form-text">Koszt + litry ⇒ PLN/L policzy się samo (jak ręcznie wpiszesz PLN/L, auto nie nadpisuje).</div></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Anuluj</button>
+        <button class="btn btn-primary" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+{# --- Modal: Interval --- #}
+<div class="modal fade" id="modalInterval" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form class="modal-content" method="post" action="{{ url_for('interval_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Dodaj interwał</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-md-4"><input name="name" class="form-control" placeholder="np. Olej + filtr" required></div>
+          <div class="col-md-2"><input name="interval_km" type="number" class="form-control" placeholder="co ile km"></div>
+          <div class="col-md-2"><input name="interval_days" type="number" class="form-control" placeholder="co ile dni"></div>
+          <div class="col-md-2"><input name="last_done_km" type="number" class="form-control" placeholder="ostatnio km"></div>
+          <div class="col-md-2"><input name="last_done_date" type="date" class="form-control"></div>
+          <div class="col-12"><input name="note" class="form-control" placeholder="notatka (opcjonalnie)"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Anuluj</button>
+        <button class="btn btn-primary" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# --- Modal: Service --- #}
+<div class="modal fade" id="modalService" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form class="modal-content" method="post" action="{{ url_for('service_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Dodaj serwis</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-md-3"><input type="date" name="date" class="form-control" required></div>
+          <div class="col-md-2"><input type="number" name="km" class="form-control" placeholder="km" min="0" step="1"></div>
+          <div class="col-md-4"><input type="text" name="title" class="form-control" placeholder="np. Olej + filtr" required></div>
+          <div class="col-md-3"><input type="text" name="cost" class="form-control" placeholder="koszt PLN"></div>
+          <div class="col-md-4"><input type="text" name="vendor" class="form-control" placeholder="warsztat / sklep"></div>
+          <div class="col-md-8"><input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)"></div>
+          <div class="col-12"><textarea name="description" class="form-control" rows="2" placeholder="opis (opcjonalnie)"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Anuluj</button>
+        <button class="btn btn-primary" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# --- Modal: Document --- #}
+<div class="modal fade" id="modalDoc" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form class="modal-content" method="post" action="{{ url_for('document_upload', car_id=car.id) }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Dodaj dokument</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-md-5"><input type="file" name="file" class="form-control" required accept=".pdf,image/*"></div>
+          <div class="col-md-3"><input type="text" name="category" class="form-control" placeholder="kategoria (np. OC, Faktura)"></div>
+          <div class="col-md-4"><input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)"></div>
+          <div class="col-12"><div class="form-text">Dozwolone: pdf, jpg, jpeg, png, webp (max 16MB).</div></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Anuluj</button>
+        <button class="btn btn-primary" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+{# --- Modal: Expense --- #}
+<div class="modal fade" id="modalExpense" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form class="modal-content" method="post" action="{{ url_for('expense_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Dodaj wydatek</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-md-3"><input type="date" name="date" class="form-control" required></div>
+          <div class="col-md-3">
+            <select name="category" class="form-select" required>
+              <option value="">Kategoria…</option>
+              {% for key, label in expense_categories.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3"><input type="text" name="amount" class="form-control" placeholder="kwota PLN" required></div>
+          <div class="col-md-3"><input type="number" name="km" class="form-control" placeholder="km (opc.)" min="0" step="1"></div>
+          <div class="col-md-6"><input type="text" name="title" class="form-control" placeholder="nazwa wydatku" required></div>
+          <div class="col-md-6"><input type="text" name="vendor" class="form-control" placeholder="sprzedawca / firma (opc.)"></div>
+          <div class="col-12"><input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Anuluj</button>
+        <button class="btn btn-primary" type="submit">Zapisz</button>
+      </div>
+    </form>
+  </div>
+</div>

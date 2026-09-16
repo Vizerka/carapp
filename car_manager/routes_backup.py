@@ -14,7 +14,7 @@ from flask_login import login_required, current_user
 from .extensions import db
 from .models import (
     Car, OdometerEntry, InsurancePolicy, TechInspection,
-    ServiceEntry, FuelEntry, ServiceInterval, Document
+    ServiceEntry, FuelEntry, ServiceInterval, Document, Expense
 )
 from .helpers import (
     _model_to_dict, _dict_to_model_kwargs,
@@ -57,6 +57,7 @@ def init_routes(app):
             "service_entries": [_model_to_dict(x) for x in ServiceEntry.query.order_by(ServiceEntry.id.asc()).all()],
             "fuel_entries": [_model_to_dict(x) for x in FuelEntry.query.order_by(FuelEntry.id.asc()).all()],
             "service_intervals": [_model_to_dict(x) for x in ServiceInterval.query.order_by(ServiceInterval.id.asc()).all()],
+            "expenses": [_model_to_dict(x) for x in Expense.query.order_by(Expense.id.asc()).all()],
             "documents": [_model_to_dict(x) for x in Document.query.order_by(Document.id.asc()).all()],
         }
 
@@ -168,6 +169,16 @@ def init_routes(app):
         def key_interval(iv: ServiceInterval):
             return (_k(iv.car_id), (iv.name or "").strip())
 
+        def key_expense(expense: Expense):
+            return (
+                _k(expense.car_id),
+                _k(expense.date),
+                (expense.category or "").strip(),
+                _q(expense.amount, "0.01"),
+                (expense.title or "").strip(),
+                (expense.vendor or "").strip(),
+            )
+
         # ---------
         # KEY FUNCS (KWARGS -> tuple)
         # ---------
@@ -214,6 +225,16 @@ def init_routes(app):
 
         def key_interval_kwargs(w):
             return (_k(w.get("car_id")), ((w.get("name") or "")).strip())
+
+        def key_expense_kwargs(w):
+            return (
+                _k(w.get("car_id")),
+                _k(w.get("date")),
+                ((w.get("category") or "")).strip(),
+                _q(w.get("amount"), "0.01"),
+                ((w.get("title") or "")).strip(),
+                ((w.get("vendor") or "")).strip(),
+            )
 
         # ----------------------------
         # Import
@@ -329,6 +350,7 @@ def init_routes(app):
                 svc_n, service_map = import_rows(ServiceEntry, "service_entries", key_service, key_service_kwargs)
                 fuel_n, fuel_map = import_rows(FuelEntry, "fuel_entries", key_fuel, key_fuel_kwargs)
                 iv_n, _ = import_rows(ServiceInterval, "service_intervals", key_interval, key_interval_kwargs)
+                expense_n, _ = import_rows(Expense, "expenses", key_expense, key_expense_kwargs)
 
                 # Nowe ID tankowań/serwisów mogą być inne niż w backupie.
                 # Po flushu odtwarzamy polimorficzne powiązania przebiegu na
@@ -421,7 +443,8 @@ def init_routes(app):
                 flash("Import zakończony ✅", "success")
                 flash(
                     f"Auta: {len(car_id_map)} | Odo: {odo_n} | OC: {oc_n} | Przeglądy: {ti_n} | "
-                    f"Serwis: {svc_n} | Tankowania: {fuel_n} | Interwały: {iv_n} | Dokumenty: {doc_n}",
+                    f"Serwis: {svc_n} | Tankowania: {fuel_n} | Interwały: {iv_n} | "
+                    f"Wydatki: {expense_n} | Dokumenty: {doc_n}",
                     "info",
                 )
                 return redirect(url_for("list_cars"))

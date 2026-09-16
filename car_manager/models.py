@@ -217,3 +217,21 @@ class ServiceInterval(db.Model):
         "Car",
         backref=db.backref("service_intervals", lazy="dynamic", cascade="all, delete-orphan"),
     )
+
+
+class Expense(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    car_id = db.Column(db.Integer, db.ForeignKey("car.id"), nullable=False, index=True)
+
+    date = db.Column(db.Date, nullable=False, index=True)
+    category = db.Column(db.String(32), nullable=False, index=True)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    title = db.Column(db.String(120), nullable=False)
+    vendor = db.Column(db.String(120))
+    km = db.Column(db.Integer)
+    note = db.Column(db.String(255))
+
+    car = db.relationship(
+        "Car",
+        backref=db.backref("expenses", lazy="dynamic", cascade="all, delete-orphan"),
+    )

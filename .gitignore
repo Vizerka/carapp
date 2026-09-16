@@ -4,3 +4,11 @@ __pycache__/
 instance/
 .env
 uploads/
+*.db
+*.db.*
+*.sqlite
+*.sqlite3
+.cache/
+.lesshst
+*.repo-seed
+uploads.repo-seed/
