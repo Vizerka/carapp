@@ -3,9 +3,16 @@ from __future__ import annotations
 from flask import render_template, request, redirect, url_for, flash
 
 from .extensions import db
-from .models import Car, FuelEntry
-from .helpers import parse_date, parse_decimal, upsert_odometer_for_date
+from .models import FuelEntry
+from .helpers import (
+    delete_source_odometer,
+    parse_date,
+    parse_decimal,
+    source_odometer_id,
+    sync_source_odometer,
+)
 from .validators import validate_odometer
+from .access import get_car_or_404, get_owned_entry_or_404
 
 
 def init_routes(app):
@@ -15,7 +22,7 @@ def init_routes(app):
 
     @app.post("/cars/<int:car_id>/fuel/new")
     def fuel_new(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
 
         when = parse_date(request.form.get("date"))
         km = int(request.form.get("km") or 0)
@@ -54,11 +61,14 @@ def init_routes(app):
             note=note,
         )
         db.session.add(fill)
+        db.session.flush()
 
-        upsert_odometer_for_date(
+        sync_source_odometer(
             car_id=car.id,
             when=when,
             km=km,
+            source_type="fuel",
+            source_id=fill.id,
             note="Tankowanie",
         )
 
@@ -68,7 +78,7 @@ def init_routes(app):
 
     @app.route("/fuel/<int:fill_id>/edit", methods=["GET", "POST"])
     def fuel_edit(fill_id):
-        f = FuelEntry.query.get_or_404(fill_id)
+        f = get_owned_entry_or_404(FuelEntry, fill_id)
         car = f.car
 
         if request.method == "POST":
@@ -91,7 +101,8 @@ def init_routes(app):
                 "unrecorded_refuels_since_last_full"
             ) == "on"
 
-            ok, msg = validate_odometer(car.id, when, km, None)
+            odo_id = source_odometer_id(source_type="fuel", source_id=f.id)
+            ok, msg = validate_odometer(car.id, when, km, odo_id)
             if not ok:
                 flash(msg, "danger")
                 return redirect(url_for("fuel_edit", fill_id=f.id))
@@ -106,11 +117,13 @@ def init_routes(app):
             f.unrecorded_refuels_since_last_full = unrecorded
             f.note = note
 
-            upsert_odometer_for_date(
+            sync_source_odometer(
                 car_id=car.id,
                 when=when,
                 km=km,
-                note="Tankowanie (edycja)",
+                source_type="fuel",
+                source_id=f.id,
+                note="Tankowanie",
             )
 
             db.session.commit()
@@ -121,8 +134,9 @@ def init_routes(app):
 
     @app.post("/fuel/<int:fill_id>/delete")
     def fuel_delete(fill_id):
-        f = FuelEntry.query.get_or_404(fill_id)
+        f = get_owned_entry_or_404(FuelEntry, fill_id)
         car_id = f.car_id
+        delete_source_odometer(source_type="fuel", source_id=f.id)
         db.session.delete(f)
         db.session.commit()
         flash("Usunięto tankowanie 🗑️", "success")

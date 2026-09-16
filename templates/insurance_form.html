@@ -3,6 +3,7 @@
 {% block content %}
 <h2>Edytuj polisę OC — {{ car.make }} {{ car.model }}</h2>
 <form method="post" class="row g-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="col-md-3">
     <label class="form-label">Ważne od</label>
     <input type="date" name="valid_from" class="form-control" value="{{ policy.valid_from }}" required>

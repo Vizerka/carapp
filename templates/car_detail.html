@@ -61,6 +61,7 @@
     <a class="btn btn-secondary" href="{{ url_for('list_cars') }}">⟵ Powrót</a>
     <form method="post" action="{{ url_for('car_delete', car_id=car.id) }}"
           onsubmit="return confirm('Na pewno usunąć to auto i całą historię?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="btn btn-outline-danger">Usuń auto</button>
     </form>
   </div>
@@ -466,11 +467,16 @@
       {% for e in odo_p.items %}
         <li class="d-flex justify-content-between align-items-center border-top py-2">
           <span>{{ e.date }} — {{ e.km }} km {% if e.note %}<em>({{ e.note }})</em>{% endif %}</span>
-          <span class="d-flex gap-2">
-            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('odometer_edit', entry_id=e.id) }}">Edytuj</a>
-            <form method="post" action="{{ url_for('odometer_delete', entry_id=e.id) }}" onsubmit="return confirm('Usunąć wpis przebiegu?')">
-              <button class="btn btn-sm btn-outline-danger">Usuń</button>
-            </form>
+          <span class="d-flex gap-2 align-items-center">
+            {% if e.source_type %}
+              <span class="badge text-bg-secondary">{{ 'tankowanie' if e.source_type == 'fuel' else 'serwis' }}</span>
+            {% else %}
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('odometer_edit', entry_id=e.id) }}">Edytuj</a>
+              <form method="post" action="{{ url_for('odometer_delete', entry_id=e.id) }}" onsubmit="return confirm('Usunąć wpis przebiegu?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-danger">Usuń</button>
+              </form>
+            {% endif %}
           </span>
         </li>
       {% else %}
@@ -499,6 +505,7 @@
           <span class="d-flex gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('insurance_edit', policy_id=p.id) }}">Edytuj</a>
             <form method="post" action="{{ url_for('insurance_delete', policy_id=p.id) }}" onsubmit="return confirm('Usunąć polisę?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-sm btn-outline-danger">Usuń</button>
             </form>
           </span>
@@ -529,6 +536,7 @@
           <span class="d-flex gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('inspection_edit', ins_id=i.id) }}">Edytuj</a>
             <form method="post" action="{{ url_for('inspection_delete', ins_id=i.id) }}" onsubmit="return confirm('Usunąć przegląd?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-sm btn-outline-danger">Usuń</button>
             </form>
           </span>
@@ -575,6 +583,7 @@
           <span class="d-flex gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('fuel_edit', fill_id=f.id) }}">Edytuj</a>
             <form method="post" action="{{ url_for('fuel_delete', fill_id=f.id) }}" onsubmit="return confirm('Usunąć tankowanie?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-sm btn-outline-danger">Usuń</button>
             </form>
           </span>
@@ -631,6 +640,7 @@
 
           <span class="d-flex gap-2 flex-wrap justify-content-end">
             <form method="post" action="{{ url_for('interval_mark_done', interval_id=iv.id) }}" class="d-flex gap-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="date" name="date" class="form-control form-control-sm" style="max-width: 150px;">
               <input type="number" name="km" class="form-control form-control-sm" placeholder="km"
                      style="max-width: 120px;" min="0" step="1">
@@ -641,6 +651,7 @@
 
             <form method="post" action="{{ url_for('interval_delete', interval_id=iv.id) }}"
                   onsubmit="return confirm('Usunąć interwał?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-sm btn-outline-danger">Usuń</button>
             </form>
           </span>
@@ -680,6 +691,7 @@
           <span class="d-flex gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('service_edit', service_id=s.id) }}">Edytuj</a>
             <form method="post" action="{{ url_for('service_delete', service_id=s.id) }}" onsubmit="return confirm('Usunąć wpis serwisowy?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-sm btn-outline-danger">Usuń</button>
             </form>
           </span>
@@ -752,6 +764,7 @@
                   <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('document_download', doc_id=d.id) }}">Pobierz</a>
                   <a class="btn btn-sm btn-outline-primary" href="{{ url_for('document_edit', doc_id=d.id) }}">Edytuj</a>
                   <form method="post" action="{{ url_for('document_delete', doc_id=d.id) }}" onsubmit="return confirm('Usunąć dokument?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="btn btn-sm btn-outline-danger">Usuń</button>
                   </form>
                 </div>
@@ -776,6 +789,7 @@
 <div class="modal fade" id="modalOdo" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form class="modal-content" method="post" action="{{ url_for('odometer_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="modal-header">
         <h5 class="modal-title">Dodaj przebieg</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -798,6 +812,7 @@
 <div class="modal fade" id="modalOC" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form class="modal-content" method="post" action="{{ url_for('insurance_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="modal-header">
         <h5 class="modal-title">Dodaj polisę OC</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -820,6 +835,7 @@
 <div class="modal fade" id="modalTI" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form class="modal-content" method="post" action="{{ url_for('inspection_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="modal-header">
         <h5 class="modal-title">Dodaj przegląd</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -843,6 +859,7 @@
 <div class="modal fade" id="modalFuel" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <form class="modal-content" method="post" action="{{ url_for('fuel_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="modal-header">
         <h5 class="modal-title">Dodaj tankowanie</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -938,6 +955,7 @@
 <div class="modal fade" id="modalInterval" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <form class="modal-content" method="post" action="{{ url_for('interval_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="modal-header">
         <h5 class="modal-title">Dodaj interwał</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -964,6 +982,7 @@
 <div class="modal fade" id="modalService" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <form class="modal-content" method="post" action="{{ url_for('service_new', car_id=car.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="modal-header">
         <h5 class="modal-title">Dodaj serwis</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -991,6 +1010,7 @@
 <div class="modal fade" id="modalDoc" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <form class="modal-content" method="post" action="{{ url_for('document_upload', car_id=car.id) }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="modal-header">
         <h5 class="modal-title">Dodaj dokument</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

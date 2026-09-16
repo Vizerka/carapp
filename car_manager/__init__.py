@@ -1,10 +1,10 @@
 # car_manager/__init__.py
 import os
-from flask import Flask, request, redirect, url_for
+from flask import Flask, request, redirect, url_for, flash
 from flask_login import current_user
-from sqlalchemy import inspect
+from flask_wtf.csrf import CSRFError
 
-from .extensions import db, login_manager
+from .extensions import csrf, db, login_manager, migrate
 from .helpers import days_left_filter
 from .cli import register_cli
 
@@ -22,16 +22,23 @@ def create_app():
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
 
     # jak chcesz absolutną ścieżkę do DB (polecam, mniej cyrków z cwd):
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(base_dir, "cars.db")
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+        "DATABASE_URL",
+        "sqlite:///" + os.path.join(base_dir, "cars.db"),
+    )
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["UPLOAD_FOLDER"] = os.path.join(base_dir, "uploads")
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
     # --- extensions ---
     db.init_app(app)
     login_manager.init_app(app)
+    migrate.init_app(app, db)
+    csrf.init_app(app)
 
     # opcjonalnie (ale przyjemne)
     login_manager.login_view = "login"
@@ -68,6 +75,11 @@ def create_app():
 
         return None
 
+    @app.errorhandler(CSRFError)
+    def _csrf_error(error):
+        flash("Formularz wygasł albo token bezpieczeństwa jest nieprawidłowy. Spróbuj ponownie.", "danger")
+        return redirect(request.referrer or url_for("dashboard")), 400
+
     # --- ROUTES (Twoja architektura init_routes) ---
     from .routes_auth import init_routes as init_auth
     from .routes_admin import init_routes as init_admin
@@ -96,17 +108,6 @@ def create_app():
     init_backup(app)
 
     with app.app_context():
-        db.create_all()
-        # create_all() nie dodaje kolumn do istniejących tabel SQLite.
-        # Wcześniejsze wpisy otrzymują domyślnie wartość 0.
-        if "unrecorded_refuels_since_last_full" not in {
-            col["name"] for col in inspect(db.engine).get_columns("fuel_entry")
-        }:
-            with db.engine.begin() as conn:
-                conn.exec_driver_sql(
-                    "ALTER TABLE fuel_entry ADD COLUMN "
-                    "unrecorded_refuels_since_last_full BOOLEAN NOT NULL DEFAULT 0"
-                )
         from .mqtt_discovery import publish_safely
         publish_safely()
 

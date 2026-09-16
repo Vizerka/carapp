@@ -43,6 +43,7 @@
         action="{{ url_for('car_delete', car_id=c.id) }}"
         class="d-inline"
         onsubmit="return confirm('Usunąć ten samochód wraz z całą historią?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn btn-sm btn-outline-danger">Usuń</button>
   </form>
 </td>
