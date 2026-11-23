@@ -347,6 +347,31 @@ def init_routes(app):
         order = {"due": 0, "soon": 1, "ok": 2, "unknown": 3}
         interval_reminders.sort(key=lambda t: order.get(t[1]["status"], 9))
 
+        def deadline_summary(kind, title, entry, modal_id):
+            valid_to = entry.valid_to if entry is not None else None
+            days_left = (valid_to - today).days if valid_to is not None else None
+            if days_left is None:
+                status = "unknown"
+            elif days_left < 0:
+                status = "due"
+            elif days_left <= 60:
+                status = "soon"
+            else:
+                status = "ok"
+            return {
+                "kind": kind,
+                "title": title,
+                "valid_to": valid_to,
+                "days_left": days_left,
+                "status": status,
+                "modal_id": modal_id,
+            }
+
+        dashboard_deadlines = [
+            deadline_summary("insurance", "Ubezpieczenie OC", oc[0] if oc else None, "modalOC"),
+            deadline_summary("inspection", "Badanie techniczne", ti[0] if ti else None, "modalTI"),
+        ]
+
         timeline_kind = (request.args.get("timeline_kind") or "").strip() or None
         timeline_p = build_timeline(
             car,
@@ -413,6 +438,8 @@ def init_routes(app):
             intervals=intervals,
             interval_reminders=interval_reminders,
             current_km=current_km,
+            dashboard_deadlines=dashboard_deadlines,
+            today=today,
             odo_p=odo_p,
             document_target_options=document_target_options(car),
             document_links=document_links,
