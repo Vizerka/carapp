@@ -179,6 +179,57 @@
   border-top: 1px solid #dee2e6;
 }
 
+.dashboard-fuel-history {
+  position: relative;
+  margin-top: .8rem;
+  padding-top: .7rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.dashboard-fuel-history details {
+  position: static;
+}
+
+.dashboard-fuel-history summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.dashboard-fuel-history summary::-webkit-details-marker {
+  display: none;
+}
+
+.dashboard-fuel-history [data-fuel-collapse-label],
+.dashboard-fuel-history details[open] [data-fuel-expand-label] {
+  display: none;
+}
+
+.dashboard-fuel-history details[open] [data-fuel-collapse-label] {
+  display: inline;
+}
+
+.dashboard-fuel-row {
+  padding: .35rem 0;
+  border-top: 1px solid #e9ecef;
+  line-height: 1.35;
+}
+
+.dashboard-fuel-popover {
+  position: absolute;
+  z-index: 1050;
+  top: calc(100% + .4rem);
+  right: 0;
+  left: 0;
+  max-height: min(420px, 65vh);
+  padding: .85rem;
+  overflow-y: auto;
+  color: #212529;
+  background: #fff;
+  border: 1px solid #ced4da;
+  border-radius: .5rem;
+  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 22%);
+}
+
 @media (max-width: 575.98px) {
   .service-plan-metrics {
     grid-template-columns: 1fr;

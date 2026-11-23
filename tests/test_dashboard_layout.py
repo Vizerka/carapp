@@ -1,8 +1,10 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
 from car_manager.extensions import db
 from car_manager.models import (
     Car,
+    FuelEntry,
     InsurancePolicy,
     OdometerEntry,
     ServiceInterval,
@@ -90,3 +92,30 @@ def test_interval_tab_uses_independent_time_and_mileage_messages(app, client):
     assert "zostało 4000 km".encode() in response.data
     assert "za 65 dni".encode() in response.data
     assert "Każdy termin pokazuje osobno".encode() in response.data
+
+
+def test_fuel_history_shows_two_rows_and_full_overlay(app, client):
+    car_id = _owned_car_id(app)
+    with app.app_context():
+        for day, km in enumerate((1000, 1500, 2000, 2500), start=1):
+            db.session.add(FuelEntry(
+                car_id=car_id,
+                date=date(2026, 1, day),
+                km=km,
+                liters=Decimal("40.000"),
+                total_cost=Decimal("250.00"),
+                full_tank=True,
+            ))
+        db.session.commit()
+
+    login(client)
+    response = client.get(f"/cars/{car_id}?tab=dash")
+    assert response.status_code == 200
+    assert response.data.count(b"data-fuel-preview-item") == 2
+    assert response.data.count(b"data-fuel-popover-item") == 4
+    assert b"data-fuel-history-popover" in response.data
+    assert "Rozwiń".encode() in response.data
+
+    script = client.get("/static/js/car-detail.js")
+    assert b"pointerdown" in script.data
+    assert b"Escape" in script.data

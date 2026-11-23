@@ -98,14 +98,7 @@
       </section>
 
       <section class="row g-3" aria-label="Ostatnia aktywność">
-        <div class="col-md-6"><div class="card p-3 h-100">
-          <div class="d-flex justify-content-between align-items-center mb-2"><strong>Ostatnie tankowania</strong><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='fuel') }}">Historia</a></div>
-          <ul class="list-unstyled small mb-0">
-            {% for f in (fills_p.items[:5] if fills_p else []) %}<li class="border-top py-2"><b>{{ f.date }}</b> · {{ f.km }} km · {{ f.liters }} L{% if f.total_cost %} · {{ f.total_cost }} PLN{% endif %}</li>
-            {% else %}<li class="text-muted">Brak tankowań.</li>{% endfor %}
-          </ul>
-        </div></div>
-        <div class="col-md-6"><div class="card p-3 h-100">
+        <div class="col-12"><div class="card p-3 h-100">
           <div class="d-flex justify-content-between align-items-center mb-2"><strong>Ostatni serwis</strong><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='svc') }}">Historia</a></div>
           <ul class="list-unstyled small mb-0">
             {% for s in (services_p.items[:5] if services_p else []) %}<li class="border-top py-2"><b>{{ s.date }}</b>{% if s.km %} · {{ s.km }} km{% endif %} · {{ s.title }}{% if s.cost %} · {{ s.cost }} PLN{% endif %}</li>
@@ -148,6 +141,45 @@
           </div><div class="mileage-chart-summary" data-mileage-range></div>
         {% else %}<div class="mileage-chart-empty px-3 text-center">Potrzebne są dwa pełne tankowania bez przerwy w zapisach.</div>{% endif %}
         <div class="d-flex justify-content-between align-items-center gap-2 mt-3"><span class="text-muted small">Spalanie powstaje z wpisów tankowania.</span><button class="btn btn-sm btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#modalFuel">+ Tankowanie</button></div>
+
+        <div class="dashboard-fuel-history" data-fuel-history>
+          <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+            <strong class="small">Ostatnie tankowania</strong>
+            <div class="d-flex align-items-center gap-2">
+              <a class="btn btn-sm btn-link py-0" href="{{ url_for('car_detail', car_id=car.id, tab='fuel') }}">Historia</a>
+              {% if dashboard_fills|length > 2 %}
+                <details data-fuel-history-popover>
+                  <summary class="btn btn-sm btn-outline-secondary">
+                    <span data-fuel-expand-label>Rozwiń</span>
+                    <span data-fuel-collapse-label>Zwiń</span>
+                  </summary>
+                  <div class="dashboard-fuel-popover">
+                    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                      <strong>Wszystkie tankowania</strong>
+                      <span class="text-muted small">{{ dashboard_fills|length }} wpisów</span>
+                    </div>
+                    <ul class="list-unstyled small mb-0">
+                      {% for f in dashboard_fills %}
+                        <li class="dashboard-fuel-row" data-fuel-popover-item>
+                          <b>{{ f.date }}</b> · {{ f.km }} km · {{ f.liters }} L{% if f.total_cost %} · {{ f.total_cost }} PLN{% endif %}
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                </details>
+              {% endif %}
+            </div>
+          </div>
+          <ul class="list-unstyled small mb-0">
+            {% for f in dashboard_fills[:2] %}
+              <li class="dashboard-fuel-row" data-fuel-preview-item>
+                <b>{{ f.date }}</b> · {{ f.km }} km · {{ f.liters }} L{% if f.total_cost %} · {{ f.total_cost }} PLN{% endif %}
+              </li>
+            {% else %}
+              <li class="text-muted small py-1">Brak tankowań.</li>
+            {% endfor %}
+          </ul>
+        </div>
       </section>
     </aside>
   </div>
