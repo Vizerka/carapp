@@ -1,3 +1,4 @@
+{% from "car/_history_chart.html" import history_chart %}
 {# ============================================================
    TANKOWANIA (PAGINACJA)
    ============================================================ #}
@@ -45,23 +46,26 @@
     </div></div>
   </div>
 
-  {% if fuel_price_values %}
-  <div class="card p-3 mb-3" data-time-chart>
-    <h5 class="mb-3">Cena paliwa [PLN/L]</h5>
-    <div class="d-flex" style="min-width:0;">
-      <div data-chart-axis style="flex:none; position:relative; width:72px; height:240px; border-right:1px solid var(--bs-border-color);"></div>
-      <div data-chart-viewport tabindex="0" style="flex:1; min-width:0; overflow-x:auto; overflow-y:hidden;">
-        <div data-chart-plot style="position:relative; height:240px; min-width:100%;"><canvas id="priceChart" data-labels='{{ fuel_price_labels|tojson }}' data-values='{{ fuel_price_values|tojson }}'></canvas></div>
-      </div>
+  {% set has_cons = (cons_values | reject('none') | list | length) > 0 %}
+  <div class="row g-3 mb-3">
+    <div class="col-xl-6">
+      {{ history_chart(
+        'Spalanie (pełny → pełny)', 'fuel-consumption-history',
+        (consumption_points if has_cons else []), 'value', 'Spalanie [L/100 km]',
+        'L/100 km', 'Spalanie pełny → pełny', 'wynik', 'wyników', 0.5, 2,
+        'Potrzebne są dwa pełne tankowania bez przerwy w zapisach.',
+        'fuel-history-chart', 'data-consumption-chart'
+      ) }}
     </div>
-    <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
-      <select class="form-select form-select-sm w-auto" data-chart-period><option value="6">6 miesięcy</option><option value="12" selected>1 rok</option><option value="36">3 lata</option><option value="all">Całość</option></select>
-      <button type="button" class="btn btn-sm btn-outline-secondary" data-chart-latest>Najnowsze</button>
-      <span class="small text-muted ms-sm-auto" data-chart-dates></span>
+    <div class="col-xl-6">
+      {{ history_chart(
+        'Cena paliwa', 'fuel-price-history', fuel_price_points, 'value',
+        'Cena [PLN/L]', 'PLN/L', 'Cena paliwa', 'pomiar', 'pomiarów', 0.1, 3,
+        'Brak tankowań z ceną paliwa.',
+        'fuel-history-chart', 'data-fuel-price-chart'
+      ) }}
     </div>
-    <input type="range" class="form-range mt-2 mb-0" min="0" max="1000" value="1000" data-chart-scroll>
   </div>
-  {% endif %}
 
   <div class="card p-3">
     <div class="text-muted small mb-2">
