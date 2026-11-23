@@ -1,3 +1,4 @@
+{% from "car/_history_chart.html" import history_chart %}
 {# ============================================================
    PRZEBIEG / OC / TI / IV bez zmian (korzystają z list)
    ============================================================ #}
@@ -6,6 +7,14 @@
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h5 class="mb-0">Przebieg</h5>
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalOdo">Dodaj przebieg</button>
+  </div>
+
+  <div class="mb-3">
+    {{ history_chart(
+      'Historia przebiegu', 'odometer-history', mileage_points, 'km',
+      'Przebieg [km]', 'km', 'Odczyt licznika', 'odczyt', 'odczytów', 1000,
+      empty_text='Brak danych przebiegu', marker='data-odometer-history-chart'
+    ) }}
   </div>
 
   <div class="card p-3">

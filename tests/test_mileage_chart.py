@@ -82,6 +82,11 @@ def test_mileage_chart_keeps_all_points_sorted_by_date_and_id(app, client):
     assert b"mileage-chart.css" in response.data
     assert b'id="odoChart"' not in response.data
 
+    odometer_tab = client.get(f"/cars/{car_id}?tab=odo")
+    odometer_points = _chart_points(odometer_tab, marker=b"data-odometer-history-chart")
+    assert [point["id"] for point in odometer_points] == expected_ids
+    assert "Historia przebiegu".encode() in odometer_tab.data
+
 
 def test_mileage_chart_empty_state(app, client):
     car_id = _owned_car_id(app)
@@ -99,19 +104,23 @@ def test_consumption_chart_uses_svg_points_and_keeps_data_gaps(app, client):
             FuelEntry(
                 car_id=car_id, date=date(2026, 1, 1), km=1000,
                 liters=Decimal("40"), full_tank=True,
+                price_per_l=Decimal("6.100"), station="Pierwsza",
             ),
             FuelEntry(
                 car_id=car_id, date=date(2026, 2, 1), km=1500,
                 liters=Decimal("35"), full_tank=True,
+                price_per_l=Decimal("6.200"), station="Druga",
             ),
             FuelEntry(
                 car_id=car_id, date=date(2026, 3, 1), km=2000,
                 liters=Decimal("40"), full_tank=True,
+                price_per_l=Decimal("6.300"), station="Trzecia",
                 unrecorded_refuels_since_last_full=True,
             ),
             FuelEntry(
                 car_id=car_id, date=date(2026, 4, 1), km=2500,
                 liters=Decimal("30"), full_tank=True,
+                price_per_l=Decimal("6.400"), station="Czwarta",
             ),
         ])
         db.session.commit()
@@ -128,3 +137,16 @@ def test_consumption_chart_uses_svg_points_and_keeps_data_gaps(app, client):
     assert b'id="consChart"' not in response.data
     assert "Średnia krocząca".encode() not in response.data
     assert b"data-average=" not in response.data
+
+    fuel_tab = client.get(f"/cars/{car_id}?tab=fuel")
+    consumption = _chart_points(fuel_tab, marker=b"data-consumption-chart")
+    prices = _chart_points(fuel_tab, marker=b"data-fuel-price-chart")
+    assert [point["value"] for point in consumption] == [7.0, None, 6.0]
+    assert [point["value"] for point in prices] == [6.1, 6.2, 6.3, 6.4]
+    assert [point["label"] for point in prices] == [
+        "Pierwsza", "Druga", "Trzecia", "Czwarta",
+    ]
+    assert b'id="priceChart"' not in fuel_tab.data
+    assert b"data-time-chart" not in fuel_tab.data
+    assert b"car-detail-charts.js" not in fuel_tab.data
+    assert b"chart.umd.min.js" not in fuel_tab.data

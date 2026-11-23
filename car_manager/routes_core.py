@@ -329,6 +329,23 @@ def init_routes(app):
                 start=1,
             )
         ]
+        fuel_price_points = []
+        for fill in fills_asc:
+            liters = Decimal(fill.liters or 0)
+            total_cost_for_fill = (
+                Decimal(fill.total_cost) if fill.total_cost is not None else None
+            )
+            price = Decimal(fill.price_per_l) if fill.price_per_l is not None else None
+            if price is None and total_cost_for_fill is not None and liters > 0:
+                price = total_cost_for_fill / liters
+            if price is None:
+                continue
+            fuel_price_points.append({
+                "id": fill.id,
+                "date": fill.date.isoformat(),
+                "value": float(price),
+                "label": fill.station or fill.note or "Tankowanie",
+            })
 
         # --- Interwały (bez zmian) ---
         intervals = (
@@ -433,6 +450,7 @@ def init_routes(app):
             cons_labels=cons_labels,
             cons_values=cons_values,
             consumption_points=consumption_points,
+            fuel_price_points=fuel_price_points,
             fuel_stats=fuel_stats,
             fuel_price_labels=fuel_stats["price_labels"],
             fuel_price_values=fuel_stats["price_values"],

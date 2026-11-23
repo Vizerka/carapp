@@ -1,0 +1,43 @@
+{% macro history_chart(title, chart_id, points, value_field, axis_title, unit,
+                       default_label, count_one, count_many, min_margin,
+                       max_decimals=0, empty_text='Brak danych', extra_class='', marker='') %}
+  <section class="mileage-chart-panel {{ extra_class }}" aria-labelledby="{{ chart_id }}-title">
+    <div class="mileage-chart-header">
+      <div>
+        <h5 id="{{ chart_id }}-title" class="mb-1">{{ title }}</h5>
+        <div class="mileage-chart-hint">Ctrl + kółko zmienia przybliżenie</div>
+      </div>
+      {% if points %}
+        <div class="mileage-chart-controls" aria-label="Sterowanie wykresem: {{ title }}">
+          <button type="button" data-mileage-zoom-out aria-label="Oddal wykres">−</button>
+          <output data-mileage-zoom aria-live="polite">100%</output>
+          <button type="button" data-mileage-zoom-in aria-label="Przybliż wykres">+</button>
+          <button type="button" class="mileage-chart-reset" data-mileage-zoom-reset>Całość</button>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if points %}
+      <div class="mileage-chart-layout" data-mileage-chart
+           {% if marker %}{{ marker }}{% endif %}
+           data-points='{{ points | tojson }}'
+           data-value-field="{{ value_field }}"
+           data-axis-title="{{ axis_title }}"
+           data-unit="{{ unit }}"
+           data-default-label="{{ default_label }}"
+           data-count-one="{{ count_one }}"
+           data-count-many="{{ count_many }}"
+           data-max-decimals="{{ max_decimals }}"
+           data-min-margin="{{ min_margin }}">
+        <div class="mileage-chart-y-axis" data-mileage-y-axis aria-hidden="true"></div>
+        <div class="mileage-chart-scroll" data-mileage-scroll tabindex="0"
+             aria-label="Przewijany wykres: {{ title }}">
+          <svg data-mileage-svg role="img" aria-label="{{ title }}"></svg>
+        </div>
+      </div>
+      <div class="mileage-chart-summary" data-mileage-range></div>
+    {% else %}
+      <div class="mileage-chart-empty px-3 text-center">{{ empty_text }}</div>
+    {% endif %}
+  </section>
+{% endmacro %}
