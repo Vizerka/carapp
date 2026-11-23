@@ -2,7 +2,7 @@
   <div class="row g-3 align-items-start dashboard-layout">
     <main class="col-xl-8" data-dashboard-main>
       <section class="card p-3 mb-3 dashboard-deadlines" aria-labelledby="deadlines-title">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
           <div>
             <h5 id="deadlines-title" class="mb-1">Najbliższe terminy</h5>
             <div class="text-muted small">Najpierw rzeczy, których lepiej nie przegapić.</div>
@@ -10,7 +10,7 @@
           <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalInterval">+ Plan serwisowy</button>
         </div>
 
-        <div class="row g-3 mb-3">
+        <div class="row g-2 mb-2">
           {% for item in dashboard_deadlines %}
             {% set tone = 'secondary' %}
             {% if item.status == 'due' %}{% set tone = 'danger' %}
@@ -18,10 +18,10 @@
             {% elif item.status == 'ok' %}{% set tone = 'success' %}{% endif %}
             <div class="col-md-6">
               <article class="deadline-card deadline-card--{{ item.status }} h-100">
-                <div class="d-flex justify-content-between gap-2 align-items-start">
-                  <div>
-                    <div class="text-muted small">{{ item.title }}</div>
-                    <div class="fs-5 fw-semibold">{{ item.valid_to or 'Brak terminu' }}</div>
+                <div class="deadline-card-main">
+                  <div class="deadline-card-date">
+                    <span class="text-muted small">{{ item.title }}</span>
+                    <strong>{{ item.valid_to or 'Brak terminu' }}</strong>
                   </div>
                   <span class="badge text-bg-{{ tone }}">
                     {% if item.days_left is none %}brak danych
@@ -29,10 +29,10 @@
                     {% elif item.days_left == 0 %}dzisiaj
                     {% else %}za {{ item.days_left }} dni{% endif %}
                   </span>
-                </div>
-                <button class="btn btn-sm btn-outline-secondary mt-3" data-bs-toggle="modal" data-bs-target="#{{ item.modal_id }}">
+                  <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#{{ item.modal_id }}">
                   {% if item.kind == 'insurance' %}+ Nowa polisa{% else %}+ Nowy przegląd{% endif %}
-                </button>
+                  </button>
+                </div>
               </article>
             </div>
           {% endfor %}
@@ -42,21 +42,22 @@
           <h6 class="mb-0">Plan serwisowy</h6>
           <span class="text-muted small">{% if current_km is not none %}Stan licznika: {{ current_km }} km{% else %}Brak aktualnego przebiegu{% endif %}</span>
         </div>
-        <div class="row g-3">
+        <div class="row g-2">
           {% for iv, c in interval_reminders %}
             {% set tone = 'secondary' %}
             {% if c.status == 'due' %}{% set tone = 'danger' %}
             {% elif c.status == 'soon' %}{% set tone = 'warning' %}
             {% elif c.status == 'ok' %}{% set tone = 'success' %}{% endif %}
-            <div class="col-lg-6">
-              <article class="service-plan-card service-plan-card--{{ c.status }} h-100">
-                <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="col-12">
+              <article class="service-plan-card dashboard-service-plan-card service-plan-card--{{ c.status }}">
+                <div class="dashboard-service-plan-title">
                   <strong>{{ iv.name }}</strong>
+                  {% if iv.note %}<small class="text-muted">{{ iv.note }}</small>{% endif %}
                   <span class="badge text-bg-{{ tone }}">
                     {% if c.status == 'due' %}po terminie{% elif c.status == 'soon' %}zbliża się{% elif c.status == 'ok' %}zaplanowane{% else %}uzupełnij dane{% endif %}
                   </span>
                 </div>
-                <div class="service-plan-metrics">
+                <div class="service-plan-metrics dashboard-service-plan-metrics">
                   <div>
                     <span class="service-plan-label">Przebieg</span>
                     {% if c.next_km is none %}<strong>Nie ustawiono</strong>
@@ -76,12 +77,11 @@
                     {% if c.next_date is not none %}<small>termin: {{ c.next_date }}</small>{% endif %}
                   </div>
                 </div>
-                {% if iv.note %}<div class="text-muted small mt-2">{{ iv.note }}</div>{% endif %}
-                <div class="d-flex flex-wrap gap-2 mt-3">
+                <div class="dashboard-service-plan-actions">
                   <a class="btn btn-sm btn-outline-primary" href="{{ url_for('interval_edit', interval_id=iv.id) }}">Edytuj</a>
                   <button class="btn btn-sm btn-outline-success" type="button" data-bs-toggle="collapse" data-bs-target="#doneInterval{{ iv.id }}">Oznacz jako zrobione</button>
                 </div>
-                <div class="collapse mt-2" id="doneInterval{{ iv.id }}">
+                <div class="collapse dashboard-service-plan-done" id="doneInterval{{ iv.id }}">
                   <form method="post" action="{{ url_for('interval_mark_done', interval_id=iv.id) }}" class="row g-2">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="col-sm-5"><input type="date" name="date" value="{{ today }}" class="form-control form-control-sm"></div>
