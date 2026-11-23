@@ -12,7 +12,6 @@
       function drawTimeChart(canvasId, labelText) {
         const el = document.getElementById(canvasId);
         if (!el) return;
-        const isConsumption = canvasId === 'consChart';
         const extendToToday = canvasId === 'odoChart';
         const controls = el.closest('[data-time-chart]');
         const fixedAxis = controls.querySelector('[data-chart-axis]');
@@ -25,7 +24,6 @@
 
         const labels = JSON.parse(el.dataset.labels || '[]'); // ["2026-01-22", ...]
         const values = JSON.parse(el.dataset.values || '[]'); // [136000, ...]
-        const averageValues = JSON.parse(el.dataset.average || '[]');
         if (!labels.length || !values.length) return;
 
         // parsing:false wymaga liczbowych znaczników czasu.
@@ -33,16 +31,10 @@
           const dt = luxon.DateTime.fromISO(String(d));
           return { x: dt.isValid ? dt.toMillis() : NaN, y: values[i] === null ? null : num(values[i]) };
         })
-        .filter(p => Number.isFinite(p.x) && (Number.isFinite(p.y) || (isConsumption && p.y === null)))
+        .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y))
         .sort((a, b) => a.x - b.x);
 
         if (!points.length) return;
-
-        const averagePoints = labels.map((d, i) => {
-          const dt = luxon.DateTime.fromISO(String(d));
-          const value = averageValues[i];
-          return { x: dt.isValid ? dt.toMillis() : NaN, y: value === null ? null : num(value) };
-        }).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
 
         // Przebieg można dociągnąć do dziś; pomiar spalania kończy się przy tankowaniu.
         const last = points[points.length - 1];
@@ -92,14 +84,7 @@
               clip: 8,
               pointRadius: 4,
               pointHitRadius: 8
-            }].concat(averagePoints.length ? [{
-              label: 'Średnia krocząca (5)',
-              data: averagePoints,
-              tension: 0.25,
-              borderDash: [6, 4],
-              pointRadius: 0,
-              borderWidth: 2
-            }] : [])
+            }]
           },
           options: {
             parsing: false, // data jest już w formacie {x(ms), y}
@@ -197,6 +182,5 @@
         }, { passive: false });
       }
 
-      drawTimeChart('consChart', 'L/100km');
       drawTimeChart('priceChart', 'Cena paliwa [PLN/L]');
     });

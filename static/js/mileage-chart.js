@@ -13,8 +13,6 @@
   const plMonth = new Intl.DateTimeFormat('pl-PL', {
     month: 'short', year: 'numeric', timeZone: 'UTC'
   });
-  const plKm = new Intl.NumberFormat('pl-PL');
-
   function svgElement(name, attributes) {
     const element = document.createElementNS(SVG_NS, name);
     Object.entries(attributes || {}).forEach(([key, value]) => {
@@ -41,11 +39,13 @@
     return niceFraction * power;
   }
 
-  function yScale(values) {
+  function yScale(values, minMargin) {
     const minimum = Math.min(...values);
     const maximum = Math.max(...values);
     const span = maximum - minimum;
-    const margin = span > 0 ? span * .12 : Math.max(Math.abs(maximum) * .12, 1000);
+    const margin = span > 0
+      ? Math.max(span * .12, minMargin)
+      : Math.max(Math.abs(maximum) * .12, minMargin);
     const paddedMin = minimum - margin;
     const paddedMax = maximum + margin;
     const step = niceStep((paddedMax - paddedMin) / 5);
@@ -130,6 +130,17 @@
     const zoomValue = panel.querySelector('[data-mileage-zoom]');
     const range = panel.querySelector('[data-mileage-range]');
     const tooltip = createTooltip();
+    const valueField = layout.dataset.valueField || 'value';
+    const axisTitle = layout.dataset.axisTitle || '';
+    const unit = layout.dataset.unit || '';
+    const defaultLabel = layout.dataset.defaultLabel || '';
+    const countOne = layout.dataset.countOne || 'punkt';
+    const countMany = layout.dataset.countMany || 'punktów';
+    const maxDecimals = Number(layout.dataset.maxDecimals || 0);
+    const minMargin = Number(layout.dataset.minMargin || 1);
+    const valueFormatter = new Intl.NumberFormat('pl-PL', {
+      maximumFractionDigits: maxDecimals
+    });
 
     let rawPoints;
     try {
@@ -138,17 +149,23 @@
       rawPoints = [];
     }
 
-    const points = rawPoints.map((point, index) => ({
-      id: Number(point.id) || 0,
-      date: String(point.date || ''),
-      time: parseDate(point.date),
-      km: Number(point.km),
-      label: String(point.label || 'Odczyt licznika'),
-      order: index
-    })).filter(point => Number.isFinite(point.time) && Number.isFinite(point.km))
+    const points = rawPoints.map((point, index) => {
+      const rawValue = point[valueField];
+      return {
+        id: Number(point.id) || 0,
+        date: String(point.date || ''),
+        time: parseDate(point.date),
+        value: rawValue === null || rawValue === undefined ? null : Number(rawValue),
+        label: String(point.label || defaultLabel),
+        order: index
+      };
+    }).filter(point => Number.isFinite(point.time) && (
+      point.value === null || Number.isFinite(point.value)
+    ))
       .sort((a, b) => a.time - b.time || a.id - b.id || a.order - b.order);
 
-    if (!points.length) return;
+    const validPoints = points.filter(point => point.value !== null);
+    if (!validPoints.length) return;
 
     let zoom = MIN_ZOOM;
     let renderedWidth = 0;
@@ -170,7 +187,7 @@
     function showTooltip(point, clientX, clientY) {
       tooltip.textContent = '';
       const heading = document.createElement('strong');
-      heading.textContent = `${plDate.format(new Date(point.time))} · ${plKm.format(point.km)} km`;
+      heading.textContent = `${plDate.format(new Date(point.time))} · ${valueFormatter.format(point.value)}${unit ? ` ${unit}` : ''}`;
       const note = document.createElement('span');
       note.textContent = point.label;
       tooltip.append(heading, note);
@@ -192,26 +209,26 @@
         const y = yFor(value);
         const tick = svgElement('line', {
           x1: axisWidth - 7, x2: axisWidth, y1: y, y2: y,
-          stroke: '#6f5795', 'stroke-width': 1
+          stroke: '#adb5bd', 'stroke-width': 1
         });
         const label = svgElement('text', {
           x: axisWidth - 11, y: y + 4,
-          fill: '#b0a4c6', 'font-size': 11,
+          fill: '#6c757d', 'font-size': 11,
           'text-anchor': 'end'
         });
-        label.textContent = plKm.format(value);
+        label.textContent = valueFormatter.format(value);
         axisSvg.append(tick, label);
       });
 
       const title = svgElement('text', {
         x: 12,
         y: top + (height - top - bottom) / 2,
-        fill: '#8f82a8',
+        fill: '#6c757d',
         'font-size': 10,
         'text-anchor': 'middle',
         transform: `rotate(-90 12 ${top + (height - top - bottom) / 2})`
       });
-      title.textContent = 'Przebieg [km]';
+      title.textContent = axisTitle;
       axisSvg.appendChild(title);
       yAxis.appendChild(axisSvg);
     }
@@ -227,10 +244,13 @@
       const right = 28;
       const plotHeight = height - top - bottom;
       const availableWidth = Math.max(1, width - left - right);
-      const scale = yScale(points.map(point => point.km));
+      const scale = yScale(validPoints.map(point => point.value), minMargin);
       const yFor = value => top + (scale.max - value) / (scale.max - scale.min) * plotHeight;
       const drawnPoints = positionedPoints(points, left, availableWidth)
-        .map(point => ({ ...point, y: yFor(point.km) }));
+        .map(point => ({
+          ...point,
+          y: point.value === null ? null : yFor(point.value)
+        }));
 
       renderedWidth = width;
       svg.replaceChildren();
@@ -244,8 +264,8 @@
         const y = yFor(value);
         svg.appendChild(svgElement('line', {
           x1: 0, x2: width, y1: y, y2: y,
-          stroke: '#504063', 'stroke-width': 1,
-          'stroke-dasharray': '4 6', opacity: .72
+          stroke: '#ced4da', 'stroke-width': 1,
+          'stroke-dasharray': '4 6', opacity: .85
         }));
       });
 
@@ -254,7 +274,7 @@
       if (firstTime === lastTime) {
         const label = svgElement('text', {
           x: width / 2, y: height - 20,
-          fill: '#b0a4c6', 'font-size': 11, 'text-anchor': 'middle'
+          fill: '#6c757d', 'font-size': 11, 'text-anchor': 'middle'
         });
         label.textContent = plDate.format(new Date(firstTime));
         svg.appendChild(label);
@@ -267,13 +287,13 @@
           const time = firstTime + (lastTime - firstTime) * ratio;
           svg.appendChild(svgElement('line', {
             x1: x, x2: x, y1: top, y2: height - bottom,
-            stroke: '#504063', 'stroke-width': 1,
-            'stroke-dasharray': '4 6', opacity: .45
+            stroke: '#dee2e6', 'stroke-width': 1,
+            'stroke-dasharray': '4 6', opacity: .95
           }));
           const label = svgElement('text', {
             x,
             y: height - 20,
-            fill: '#b0a4c6',
+            fill: '#6c757d',
             'font-size': 11,
             'text-anchor': index === 0 ? 'start' : index === tickCount - 1 ? 'end' : 'middle'
           });
@@ -282,25 +302,33 @@
         }
       }
 
-      if (drawnPoints.length > 1) {
-        const path = svgElement('path', {
-          d: drawnPoints.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' '),
-          fill: 'none',
-          stroke: '#b899ff',
-          'stroke-width': 2.5,
-          'stroke-linejoin': 'round',
-          'stroke-linecap': 'round'
-        });
-        svg.appendChild(path);
+      let segment = [];
+      function drawSegment() {
+        if (segment.length > 1) {
+          svg.appendChild(svgElement('path', {
+            d: segment.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' '),
+            fill: 'none',
+            stroke: '#0d6efd',
+            'stroke-width': 2.5,
+            'stroke-linejoin': 'round',
+            'stroke-linecap': 'round'
+          }));
+        }
+        segment = [];
       }
-
       drawnPoints.forEach(point => {
+        if (point.value === null) drawSegment();
+        else segment.push(point);
+      });
+      drawSegment();
+
+      drawnPoints.filter(point => point.value !== null).forEach(point => {
         const circle = svgElement('circle', {
           cx: point.x, cy: point.y, r: 5,
-          fill: '#a78bfa', stroke: '#130e20', 'stroke-width': 2,
+          fill: '#0d6efd', stroke: '#ffffff', 'stroke-width': 2,
           tabindex: 0,
           role: 'img',
-          'aria-label': `${plDate.format(new Date(point.time))}, ${plKm.format(point.km)} km, ${point.label}`
+          'aria-label': `${plDate.format(new Date(point.time))}, ${valueFormatter.format(point.value)}${unit ? ` ${unit}` : ''}, ${point.label}`
         });
         circle.style.cursor = 'pointer';
         circle.addEventListener('pointerenter', event => showTooltip(point, event.clientX, event.clientY));
@@ -312,7 +340,7 @@
         });
         circle.addEventListener('blur', hideTooltip);
         const title = svgElement('title');
-        title.textContent = `${point.date} · ${plKm.format(point.km)} km · ${point.label}`;
+        title.textContent = `${point.date} · ${valueFormatter.format(point.value)}${unit ? ` ${unit}` : ''} · ${point.label}`;
         circle.appendChild(title);
         svg.appendChild(circle);
       });
@@ -321,7 +349,7 @@
       zoomValue.textContent = `${zoom}%`;
       zoomOut.disabled = zoom <= MIN_ZOOM;
       zoomIn.disabled = zoom >= MAX_ZOOM;
-      range.textContent = `${plDate.format(new Date(firstTime))} – ${plDate.format(new Date(lastTime))} · ${points.length} ${points.length === 1 ? 'odczyt' : 'odczytów'}`;
+      range.textContent = `${plDate.format(new Date(firstTime))} – ${plDate.format(new Date(lastTime))} · ${validPoints.length} ${validPoints.length === 1 ? countOne : countMany}`;
 
       if (preserve) {
         const anchorX = preserve.anchorX;

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -28,16 +28,6 @@ def fuel_statistics(fills, today: date | None = None):
         for label, value in zip(labels, values)
         if value is not None and date.fromisoformat(label) >= cutoff_12m
     ]
-
-    rolling = []
-    window = deque(maxlen=5)
-    for value in values:
-        if value is None:
-            window.clear()
-            rolling.append(None)
-            continue
-        window.append(value)
-        rolling.append(_average(window))
 
     price_labels = []
     price_values = []
@@ -81,7 +71,6 @@ def fuel_statistics(fills, today: date | None = None):
     return {
         "labels": labels,
         "values": values,
-        "rolling_5": rolling,
         "last": valid_values[-1] if valid_values else None,
         "average_5": _average(valid_values[-5:]),
         "average_10": _average(valid_values[-10:]),

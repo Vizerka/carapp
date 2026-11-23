@@ -316,6 +316,18 @@ def init_routes(app):
         # Pełne tankowanie z przerwą zamyka poprzedni odcinek bez wyniku.
         cons_labels = fuel_stats["labels"]
         cons_values = fuel_stats["values"]
+        consumption_points = [
+            {
+                "id": index,
+                "date": label,
+                "value": value,
+                "label": "Spalanie pełny → pełny",
+            }
+            for index, (label, value) in enumerate(
+                zip(cons_labels, cons_values),
+                start=1,
+            )
+        ]
 
         # --- Interwały (bez zmian) ---
         intervals = (
@@ -393,7 +405,7 @@ def init_routes(app):
 
             cons_labels=cons_labels,
             cons_values=cons_values,
-            cons_rolling=fuel_stats["rolling_5"],
+            consumption_points=consumption_points,
             fuel_stats=fuel_stats,
             fuel_price_labels=fuel_stats["price_labels"],
             fuel_price_values=fuel_stats["price_values"],

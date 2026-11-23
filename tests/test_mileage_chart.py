@@ -1,9 +1,10 @@
 import json
 import re
 from datetime import date
+from decimal import Decimal
 
 from car_manager.extensions import db
-from car_manager.models import Car, OdometerEntry
+from car_manager.models import Car, FuelEntry, OdometerEntry
 
 from .conftest import login
 
@@ -13,8 +14,10 @@ def _owned_car_id(app):
         return Car.query.filter_by(model="940").one().id
 
 
-def _chart_points(response):
-    match = re.search(rb"data-points='([^']*)'", response.data)
+def _chart_points(response, marker=b"data-mileage-chart"):
+    start = response.data.find(marker)
+    assert start >= 0, f"Brak znacznika wykresu: {marker!r}"
+    match = re.search(rb"data-points='([^']*)'", response.data[start:])
     assert match, "Brak danych wykresu przebiegu w odpowiedzi"
     return json.loads(match.group(1))
 
@@ -87,3 +90,41 @@ def test_mileage_chart_empty_state(app, client):
     assert response.status_code == 200
     assert "Brak danych przebiegu".encode() in response.data
     assert b"data-mileage-chart" not in response.data
+
+
+def test_consumption_chart_uses_svg_points_and_keeps_data_gaps(app, client):
+    car_id = _owned_car_id(app)
+    with app.app_context():
+        db.session.add_all([
+            FuelEntry(
+                car_id=car_id, date=date(2026, 1, 1), km=1000,
+                liters=Decimal("40"), full_tank=True,
+            ),
+            FuelEntry(
+                car_id=car_id, date=date(2026, 2, 1), km=1500,
+                liters=Decimal("35"), full_tank=True,
+            ),
+            FuelEntry(
+                car_id=car_id, date=date(2026, 3, 1), km=2000,
+                liters=Decimal("40"), full_tank=True,
+                unrecorded_refuels_since_last_full=True,
+            ),
+            FuelEntry(
+                car_id=car_id, date=date(2026, 4, 1), km=2500,
+                liters=Decimal("30"), full_tank=True,
+            ),
+        ])
+        db.session.commit()
+
+    login(client)
+    response = client.get(f"/cars/{car_id}?tab=dash")
+    assert response.status_code == 200
+
+    points = _chart_points(response, marker=b"data-consumption-chart")
+    assert [point["date"] for point in points] == [
+        "2026-02-01", "2026-03-01", "2026-04-01",
+    ]
+    assert [point["value"] for point in points] == [7.0, None, 6.0]
+    assert b'id="consChart"' not in response.data
+    assert "Średnia krocząca".encode() not in response.data
+    assert b"data-average=" not in response.data
