@@ -2,6 +2,10 @@
 {% extends "base.html" %}
 {% block title %}{{ car.make }} {{ car.model }}{% endblock %}
 
+{% block styles %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/mileage-chart.css') }}">
+{% endblock %}
+
 {% block content %}
 {% set tab = request.args.get("tab", "dash") %}
 
@@ -99,6 +103,7 @@
 {% endblock %}
 
 {% block scripts %}
+  <script src="{{ url_for('static', filename='js/mileage-chart.js') }}"></script>
   <script src="{{ url_for('static', filename='js/car-detail-charts.js') }}"></script>
   <script src="{{ url_for('static', filename='js/car-detail.js') }}"></script>
 {% endblock %}

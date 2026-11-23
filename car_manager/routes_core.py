@@ -147,10 +147,16 @@ def init_routes(app):
             .paginate(page=odo_page, per_page=PER_PAGE_ODO, error_out=False)
         )
 
-        # wykres zostaw jak masz:
         odo_asc = car.odometer_entries.order_by(OdometerEntry.date.asc(), OdometerEntry.id.asc()).all()
-        odo_labels = [e.date.isoformat() for e in odo_asc]
-        odo_values = [e.km for e in odo_asc]
+        mileage_points = [
+            {
+                "id": entry.id,
+                "date": entry.date.isoformat(),
+                "km": entry.km,
+                "label": entry.note or "Odczyt licznika",
+            }
+            for entry in odo_asc
+        ]
 
         # --- OC / TI bez paginacji (zwykle mało) ---
         oc = car.insurance_policies.order_by(desc(InsurancePolicy.valid_to), desc(InsurancePolicy.id)).all()
@@ -354,8 +360,7 @@ def init_routes(app):
             car=car,
             tab=tab,
 
-            odo_labels=odo_labels,
-            odo_values=odo_values,
+            mileage_points=mileage_points,
 
             oc=oc,
             ti=ti,

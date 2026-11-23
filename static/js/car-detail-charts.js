@@ -197,7 +197,6 @@
         }, { passive: false });
       }
 
-      drawTimeChart('odoChart', 'Przebieg [km]');
       drawTimeChart('consChart', 'L/100km');
       drawTimeChart('priceChart', 'Cena paliwa [PLN/L]');
     });
