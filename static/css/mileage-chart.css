@@ -50,8 +50,8 @@
 .mileage-chart-controls button:hover:not(:disabled),
 .mileage-chart-controls button:focus-visible {
   border-color: var(--bs-primary, #0d6efd);
-  color: #0a58ca;
-  background: #e7f1ff;
+  color: var(--garage-hover, #4e259e);
+  background: var(--garage-tint, #eee8f8);
   outline: none;
 }
 
@@ -62,7 +62,7 @@
 
 .mileage-chart-controls output {
   min-width: 4.2rem;
-  color: #0a58ca;
+  color: var(--garage-hover, #4e259e);
   font-size: .9rem;
   font-weight: 700;
 }

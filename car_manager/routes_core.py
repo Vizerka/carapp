@@ -56,14 +56,22 @@ def init_routes(app):
         oc_expired.sort(key=lambda t: t[1])
         ti_expired.sort(key=lambda t: t[1])
 
+        def deadlines(insurance, inspections):
+            rows = [(car, due, "OC") for car, due in insurance]
+            rows += [(car, due, "Przegląd") for car, due in inspections]
+            return sorted(rows, key=lambda row: row[1])
+
+        expired = deadlines(oc_expired, ti_expired)
+        upcoming = deadlines(oc_upcoming, ti_upcoming)
+        expired_ids = {car.id for car, _, _ in expired}
+        next_due = {}
+        for car, due, _ in upcoming:
+            next_due.setdefault(car.id, due)
+
         return render_template(
-            "index.html",
-            cars_count=len(cars),
-            oc_upcoming=oc_upcoming,
-            ti_upcoming=ti_upcoming,
-            oc_expired=oc_expired,
-            ti_expired=ti_expired,
-            upcoming_days=upcoming_days
+            "index.html", cars=cars, expired=expired, upcoming=upcoming,
+            attention=expired + [row for row in upcoming if (row[1] - today).days <= 7],
+            expired_ids=expired_ids, next_due=next_due, today=today,
         )
 
     @app.get("/about")

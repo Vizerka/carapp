@@ -308,7 +308,7 @@
           svg.appendChild(svgElement('path', {
             d: segment.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' '),
             fill: 'none',
-            stroke: '#0d6efd',
+            stroke: 'var(--garage-accent, #6234ba)',
             'stroke-width': 2.5,
             'stroke-linejoin': 'round',
             'stroke-linecap': 'round'
@@ -325,7 +325,7 @@
       drawnPoints.filter(point => point.value !== null).forEach(point => {
         const circle = svgElement('circle', {
           cx: point.x, cy: point.y, r: 5,
-          fill: '#0d6efd', stroke: '#ffffff', 'stroke-width': 2,
+          fill: 'var(--garage-accent, #6234ba)', stroke: '#ffffff', 'stroke-width': 2,
           tabindex: 0,
           role: 'img',
           'aria-label': `${plDate.format(new Date(point.time))}, ${valueFormatter.format(point.value)}${unit ? ` ${unit}` : ''}, ${point.label}`
