@@ -120,7 +120,14 @@
 
     {% if mileage_points %}
       <div class="mileage-chart-layout" data-mileage-chart
-           data-points='{{ mileage_points | tojson }}'>
+           data-points='{{ mileage_points | tojson }}'
+           data-value-field="km"
+           data-axis-title="Przebieg [km]"
+           data-unit="km"
+           data-default-label="Odczyt licznika"
+           data-count-one="odczyt"
+           data-count-many="odczytów"
+           data-min-margin="1000">
         <div class="mileage-chart-y-axis" data-mileage-y-axis aria-hidden="true"></div>
         <div class="mileage-chart-scroll" data-mileage-scroll tabindex="0"
              aria-label="Przewijany wykres historii przebiegu">
@@ -136,42 +143,48 @@
 
   {% set has_cons = (cons_values | reject('none') | list | length) > 0 %}
   {% if has_cons %}
-  <div class="card p-3 mb-3" data-time-chart>
-    <h5 class="mb-3">Spalanie (pełny → pełny) [L/100km]</h5>
-    <div class="d-flex" style="min-width:0;">
-      <div data-chart-axis style="flex:none; position:relative; width:64px; height:240px; border-right:1px solid var(--bs-border-color);"></div>
-      <div data-chart-viewport tabindex="0" aria-label="Przewijaj wykres spalania poziomo"
-           style="flex:1; min-width:0; overflow-x:auto; overflow-y:hidden;">
-        <div data-chart-plot style="position:relative; height:240px; min-width:100%;">
-          <canvas id="consChart" data-labels='{{ cons_labels | tojson }}' data-values='{{ cons_values | tojson }}' data-average='{{ cons_rolling | tojson }}'></canvas>
-        </div>
+  <section class="mileage-chart-panel mb-3" aria-labelledby="consumption-chart-title">
+    <div class="mileage-chart-header">
+      <div>
+        <h5 id="consumption-chart-title" class="mb-1">Spalanie (pełny → pełny)</h5>
+        <div class="mileage-chart-hint">Ctrl + kółko zmienia przybliżenie</div>
+      </div>
+
+      <div class="mileage-chart-controls" aria-label="Sterowanie wykresem spalania">
+        <button type="button" data-mileage-zoom-out aria-label="Oddal wykres">−</button>
+        <output data-mileage-zoom aria-live="polite">100%</output>
+        <button type="button" data-mileage-zoom-in aria-label="Przybliż wykres">+</button>
+        <button type="button" class="mileage-chart-reset" data-mileage-zoom-reset>Całość</button>
       </div>
     </div>
-    <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
-      <label for="consChartPeriod" class="small mb-0">Czas na ekranie:</label>
-      <select id="consChartPeriod" class="form-select form-select-sm w-auto" data-chart-period>
-        <option value="6">6 miesięcy</option>
-        <option value="12" selected>1 rok</option>
-        <option value="36">3 lata</option>
-        <option value="all">Całość</option>
-      </select>
-      <button type="button" class="btn btn-sm btn-outline-secondary" data-chart-latest>Najnowsze</button>
-      <span class="small text-muted ms-sm-auto" data-chart-dates></span>
+
+    <div class="mileage-chart-layout" data-mileage-chart data-consumption-chart
+         data-points='{{ consumption_points | tojson }}'
+         data-value-field="value"
+         data-axis-title="Spalanie [L/100 km]"
+         data-unit="L/100 km"
+         data-default-label="Spalanie pełny → pełny"
+         data-count-one="wynik"
+         data-count-many="wyników"
+         data-max-decimals="2"
+         data-min-margin="0.5">
+      <div class="mileage-chart-y-axis" data-mileage-y-axis aria-hidden="true"></div>
+      <div class="mileage-chart-scroll" data-mileage-scroll tabindex="0"
+           aria-label="Przewijany wykres spalania">
+        <svg data-mileage-svg role="img"
+             aria-label="Historia spalania samochodu w czasie"></svg>
+      </div>
     </div>
-    <input type="range" class="form-range mt-2 mb-0" min="0" max="1000" value="1000"
-           aria-label="Przesuń wykres spalania w czasie" data-chart-scroll>
-    <div class="form-text">Przewijaj wykres poziomo, suwakiem, gładzikiem lub Shift + kółkiem myszki.</div>
-    <div class="form-text mt-2">
+    <div class="mileage-chart-summary" data-mileage-range></div>
+    <div class="mileage-chart-note">
       Liczone między pełnymi tankowaniami. Przerwa w zapisach pomija wynik dla tego okresu.
     </div>
-  </div>
+  </section>
   {% else %}
   <div class="alert alert-secondary p-3 mb-3">
     Brak wiarygodnych danych do wykresu spalania — potrzebne są dwa kolejne pełne tankowania bez przerwy w zapisach.
   </div>
   {% endif %}
-
-  {# Cała historia na szerokich wykresach z nieruchomymi podziałkami Y. #}
 
   <div class="row g-3">
     <div class="col-md-6">
