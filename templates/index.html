@@ -1,69 +1,93 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — Car Manager{% endblock %}
 {% block content %}
-<h1 class="mb-3">Dashboard</h1>
-
-<div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <div class="card p-3">
-      <h5>Twoje auta</h5>
-      <p class="display-6 mb-0">{{ cars_count }}</p>
-      <a class="btn btn-sm btn-primary mt-2" href="{{ url_for('list_cars') }}">Przejdź do listy</a>
-    </div>
+{% macro name(car) %}{{ car.make }} {{ car.model }}{% endmacro %}
+<header class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <h1 class="mb-0">Dashboard</h1>
+  <div class="d-flex align-items-center gap-3">
+    <span class="text-body-secondary">Samochody: {{ cars|length }}</span>
+    <a class="btn btn-primary" href="{{ url_for('car_new') }}">+ Dodaj auto</a>
   </div>
-  <div class="col-md-8">
-    <div class="card p-3">
-      <h5>Najbliższe terminy ({{ upcoming_days }} dni)</h5>
-      <div class="row">
-        <div class="col-md-6">
-          <h6 class="mt-2">OC</h6>
-          <ul class="small">
-            {% for c, d in oc_upcoming %}
-              {% set dl = d|days_left %}
-              <li>{{ c.make }} {{ c.model }} — {{ d }}{% if dl is not none %} (za {{ dl }} dni){% endif %}</li>
-            {% else %}
-              <li>Brak.</li>
-            {% endfor %}
-          </ul>
-        </div>
-        <div class="col-md-6">
-          <h6 class="mt-2">Przegląd</h6>
-          <ul class="small">
-            {% for c, d in ti_upcoming %}
-              {% set dl = d|days_left %}
-              <li>{{ c.make }} {{ c.model }} — {{ d }}{% if dl is not none %} (za {{ dl }} dni){% endif %}</li>
-            {% else %}
-              <li>Brak.</li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-      <hr>
-      <div class="row">
-        <div class="col-md-6">
-          <h6 class="text-danger">OC po terminie</h6>
-          <ul class="small">
-            {% for c, d in oc_expired %}
-              <li>{{ c.make }} {{ c.model }} — {{ d }}</li>
-            {% else %}
-              <li>Brak.</li>
-            {% endfor %}
-          </ul>
-        </div>
-        <div class="col-md-6">
-          <h6 class="text-danger">Przegląd po terminie</h6>
-          <ul class="small">
-            {% for c, d in ti_expired %}
-              <li>{{ c.make }} {{ c.model }} — {{ d }}</li>
-            {% else %}
-              <li>Brak.</li>
-            {% endfor %}
-          </ul>
-        </div>
+</header>
+<div class="garage-grid">
+  <section class="garage-panel garage-attention">
+    <h2>Wymagają uwagi</h2>
+    {% if attention %}
+    <div class="table-responsive"><table class="table align-middle mb-0">
+      <thead><tr><th>Samochód</th><th>Problem</th><th>Termin</th><th>Akcja</th></tr></thead>
+      <tbody>
+      {% for car, due, kind in attention %}
+        <tr><th scope="row">{{ name(car) }}</th>
+          <td class="{{ 'text-danger' if due < today }}">{{ kind }}{% if due < today %} po terminie{% endif %}</td>
+          <td class="{{ 'text-warning-emphasis' if due >= today }}">{{ due.strftime('%d.%m.%Y') }}{% if due == today %} · dziś{% elif due > today %} · za {{ (due-today).days }} dni{% endif %}</td>
+          <td><a class="btn btn-sm btn-outline-primary" href="{{ url_for('car_detail', car_id=car.id) }}">Otwórz</a></td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<p class="text-body-secondary mb-0">Brak pilnych terminów.</p>{% endif %}
+  </section>
+  <section class="garage-panel garage-dates">
+    <h2>Najbliższe terminy</h2>
+    {% if upcoming %}
+      <ul class="list-group list-group-flush">
+      {% for car, due, kind in upcoming[:3] %}
+        <li class="list-group-item px-0"><strong>{{ due.strftime('%d.%m') }}</strong> ·
+          <a href="{{ url_for('car_detail', car_id=car.id) }}">{{ name(car) }}</a> · {{ kind }}</li>
+      {% endfor %}
+      </ul>
+      {% if upcoming|length > 3 %}
+      <details class="mt-2"><summary>Pokaż pozostałe terminy</summary>
+        <ul class="list-group list-group-flush">
+        {% for car, due, kind in upcoming[3:] %}
+          <li class="list-group-item px-0"><strong>{{ due.strftime('%d.%m') }}</strong> ·
+            <a href="{{ url_for('car_detail', car_id=car.id) }}">{{ name(car) }}</a> · {{ kind }}</li>
+        {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+    {% else %}<p class="text-body-secondary mb-0">Brak terminów w ciągu 60 dni.</p>{% endif %}
+  </section>
+  <section class="garage-panel garage-cars">
+    <div class="garage-panel-heading">
+      <h2>Samochody</h2>
+      <div class="d-flex flex-wrap gap-2">
+        <input id="garage-search" class="form-control form-control-sm w-auto" type="search" placeholder="Szukaj auta…" aria-label="Szukaj auta">
+        <select id="garage-status" class="form-select form-select-sm w-auto" aria-label="Status samochodu">
+          <option value="">Wszystkie</option><option value="expired">Po terminie</option>
+          <option value="upcoming">Do 60 dni</option><option value="clear">Bez uwag</option>
+        </select>
       </div>
     </div>
-  </div>
+    <div class="table-responsive"><table class="table align-middle mb-0">
+      <thead><tr><th>Samochód</th><th>Rejestracja / rocznik</th><th>Przebieg</th><th>Status</th><th><span class="visually-hidden">Akcja</span></th></tr></thead>
+      <tbody>
+      {% for car in cars %}
+        {% set odometer = car.last_odometer %}
+        {% set due = next_due.get(car.id) %}
+        {% set status = 'expired' if car.id in expired_ids else ('upcoming' if due else 'clear') %}
+        <tr data-garage-status="{{ status }}" data-garage-search="{{ car.make }} {{ car.model }} {{ car.reg_number or '' }} {{ car.year or '' }}">
+          <th scope="row">{{ name(car) }}</th><td>{{ car.reg_number or '—' }} / {{ car.year or '—' }}</td>
+          <td class="text-nowrap">{% if odometer %}{{ '{:,}'.format(odometer.km).replace(',', ' ') }} km{% else %}—{% endif %}</td>
+          <td>{% if status == 'expired' %}<span class="text-danger">Po terminie</span>
+            {% elif due %}<span class="text-warning-emphasis">{{ 'Termin dziś' if due == today else 'Termin za ' ~ (due-today).days ~ ' dni' }}</span>
+            {% else %}Bez uwag{% endif %}</td>
+          <td><a href="{{ url_for('car_detail', car_id=car.id) }}">Szczegóły</a></td>
+        </tr>
+      {% endfor %}
+        <tr id="garage-empty"{% if cars %} hidden{% endif %}><td colspan="5">{{ 'Brak pasujących samochodów.' if cars else 'Nie ma jeszcze samochodów.' }}</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+  <section class="garage-panel garage-summary">
+    <h2>Podsumowanie</h2>
+    <dl class="garage-counts mb-0">
+      <div><dt>Samochody</dt><dd>{{ cars|length }}</dd></div>
+      <div><dt>Zaległe terminy</dt><dd>{{ expired|length }}</dd></div>
+      <div><dt>Terminy do 60 dni</dt><dd>{{ upcoming|length }}</dd></div>
+      <div><dt>Auta bez uwag</dt><dd>{{ cars|length - (expired_ids.union(next_due)|length) }}</dd></div>
+    </dl>
+  </section>
 </div>
-
-<a class="btn btn-success" href="{{ url_for('car_new') }}">+ Dodaj auto</a>
+{% endblock %}
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/garage.js') }}" defer></script>
 {% endblock %}

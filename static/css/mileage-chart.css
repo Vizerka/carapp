@@ -1,0 +1,204 @@
+.mileage-chart-panel {
+  color: #212529;
+  background: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.mileage-chart-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .9rem;
+}
+
+.mileage-chart-hint,
+.mileage-chart-summary,
+.mileage-chart-note {
+  color: #6c757d;
+  font-size: .82rem;
+}
+
+.mileage-chart-controls {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.mileage-chart-controls button,
+.mileage-chart-controls output {
+  min-width: 2.5rem;
+  min-height: 2.25rem;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #adb5bd;
+  border-radius: 8px;
+  color: #212529;
+  background: #fff;
+  font: inherit;
+  line-height: 1;
+}
+
+.mileage-chart-controls button {
+  cursor: pointer;
+  font-size: 1.15rem;
+}
+
+.mileage-chart-controls button:hover:not(:disabled),
+.mileage-chart-controls button:focus-visible {
+  border-color: var(--bs-primary, #0d6efd);
+  color: var(--garage-hover, #4e259e);
+  background: var(--garage-tint, #eee8f8);
+  outline: none;
+}
+
+.mileage-chart-controls button:disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.mileage-chart-controls output {
+  min-width: 4.2rem;
+  color: var(--garage-hover, #4e259e);
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.mileage-chart-controls .mileage-chart-reset {
+  min-width: 4.6rem;
+  padding-inline: .75rem;
+  font-size: .85rem;
+}
+
+.mileage-chart-layout {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 340px;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.mileage-chart-y-axis {
+  position: relative;
+  z-index: 2;
+  width: 86px;
+  flex: 0 0 86px;
+  height: 100%;
+  overflow: hidden;
+  background: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+}
+
+.mileage-chart-y-axis svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mileage-chart-scroll {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-color: #adb5bd #f1f3f5;
+  scrollbar-width: thin;
+  overscroll-behavior-inline: contain;
+}
+
+.mileage-chart-scroll:focus-visible {
+  outline: 2px solid var(--bs-primary, #0d6efd);
+  outline-offset: -2px;
+}
+
+.mileage-chart-scroll svg {
+  display: block;
+  max-width: none;
+  height: 100%;
+}
+
+.mileage-chart-summary {
+  margin-top: .55rem;
+  text-align: right;
+}
+
+.mileage-chart-note {
+  margin-top: .3rem;
+}
+
+.mileage-chart-empty {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  color: #6c757d;
+  border: 1px dashed #adb5bd;
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.mileage-chart-tooltip {
+  position: fixed;
+  z-index: 1080;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: .6rem .7rem;
+  pointer-events: none;
+  color: #fff;
+  background: #212529;
+  border: 1px solid #343a40;
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 35%);
+  font-size: .82rem;
+  line-height: 1.35;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 100ms ease, transform 100ms ease;
+}
+
+.mileage-chart-tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mileage-chart-tooltip strong,
+.mileage-chart-tooltip span {
+  display: block;
+}
+
+.mileage-chart-tooltip span {
+  margin-top: .18rem;
+  color: #dee2e6;
+}
+
+@media (max-width: 575.98px) {
+  .mileage-chart-panel {
+    padding: .75rem;
+  }
+
+  .mileage-chart-header {
+    align-items: flex-start;
+  }
+
+  .mileage-chart-layout {
+    height: 300px;
+  }
+
+  .mileage-chart-y-axis {
+    width: 76px;
+    flex-basis: 76px;
+  }
+
+  .mileage-chart-controls {
+    width: 100%;
+  }
+
+  .mileage-chart-controls .mileage-chart-reset {
+    margin-left: auto;
+  }
+}

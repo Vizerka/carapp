@@ -1,0 +1,71 @@
+{% if tab == 'tires' %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Opony i koła</h5>
+    <a class="btn btn-primary" href="{{ url_for('tire_set_new', car_id=car.id) }}">Dodaj komplet</a>
+  </div>
+
+  <div class="row g-3">
+    {% for tire_set in tire_sets %}
+      <div class="col-12">
+        <div class="card p-3 {% if not tire_set.active %}opacity-75{% endif %}">
+          <div class="d-flex flex-wrap justify-content-between gap-2">
+            <div>
+              <h5 class="mb-1">{{ tire_set.name }}</h5>
+              <div class="text-muted small">
+                {{ tire_seasons.get(tire_set.season, tire_set.season) }}
+                {% if tire_set.size_label %} · {{ tire_set.size_label }}{% endif %}
+                {% if tire_set.manufacturer %} · {{ tire_set.manufacturer }} {{ tire_set.model or '' }}{% endif %}
+                {% if tire_set.dot %} · DOT {{ tire_set.dot }}{% endif %}
+              </div>
+            </div>
+            <div class="d-flex gap-2">
+              <a class="btn btn-sm btn-primary" href="{{ url_for('tire_event_new', set_id=tire_set.id) }}">Dodaj zdarzenie</a>
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('tire_set_edit', set_id=tire_set.id) }}">Edytuj</a>
+              <form method="post" action="{{ url_for('tire_set_delete', set_id=tire_set.id) }}" onsubmit="return confirm('Usunąć komplet i całą historię?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-danger">Usuń</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="row g-2 mt-2 small">
+            <div class="col-md-3"><span class="text-muted">Przebieg kompletu:</span> <b>{{ tire_mileages[tire_set.id] }} km</b></div>
+            <div class="col-md-3"><span class="text-muted">Felga:</span> {{ tire_set.rim or '—' }}</div>
+            <div class="col-md-3"><span class="text-muted">Ciśnienie:</span> {{ tire_set.recommended_pressure or '—' }}</div>
+            <div class="col-md-3"><span class="text-muted">Przechowywanie:</span> {{ tire_set.storage_location or '—' }}</div>
+          </div>
+
+          <div class="table-responsive mt-3">
+            <table class="table table-sm align-middle mb-0">
+              <thead><tr><th>Data</th><th>Zdarzenie</th><th>Przebieg</th><th>Bieżnik LP / PP / LT / PT</th><th>Notatka</th><th></th></tr></thead>
+              <tbody>
+                {% for event in tire_events[tire_set.id] %}
+                  <tr>
+                    <td>{{ event.date }}</td>
+                    <td>{{ {'installed':'Założono','removed':'Zdjęto','inspection':'Pomiar'}.get(event.action, event.action) }}</td>
+                    <td>{{ (event.km|string + ' km') if event.km is not none else '—' }}</td>
+                    <td>{{ event.tread_fl or '—' }} / {{ event.tread_fr or '—' }} / {{ event.tread_rl or '—' }} / {{ event.tread_rr or '—' }}</td>
+                    <td>{{ event.note or '—' }}</td>
+                    <td class="text-end">
+                      <div class="d-inline-flex gap-1">
+                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('tire_event_edit', event_id=event.id) }}">Edytuj</a>
+                        <form method="post" action="{{ url_for('tire_event_delete', event_id=event.id) }}">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <button class="btn btn-sm btn-outline-danger">Usuń</button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="6" class="text-muted">Brak historii kompletu.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="col-12"><div class="alert alert-secondary">Nie dodano jeszcze kompletu opon.</div></div>
+    {% endfor %}
+  </div>
+{% endif %}

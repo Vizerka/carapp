@@ -9,6 +9,9 @@ from .models import User
 
 
 def register_cli(app: Flask) -> None:
+    from .mail_reminders import send_reminders
+
+    app.cli.add_command(send_reminders)
 
     @app.cli.command("create-admin")
     @click.option("--username", prompt=True)

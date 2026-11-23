@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edytuj' if tire_set else 'Dodaj' }} komplet opon{% endblock %}
+{% block content %}
+<h2 class="mb-3">{{ 'Edytuj' if tire_set else 'Dodaj' }} komplet opon — {{ car.make }} {{ car.model }}</h2>
+<form method="post" class="card p-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="row g-3">
+    <div class="col-md-4"><label class="form-label">Nazwa</label><input name="name" class="form-control" value="{{ tire_set.name if tire_set else '' }}" placeholder="np. Zestaw lato" required></div>
+    <div class="col-md-3"><label class="form-label">Sezon</label><select name="season" class="form-select">{% for key,label in seasons.items() %}<option value="{{ key }}" {% if tire_set and tire_set.season == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><label class="form-label">Producent</label><input name="manufacturer" class="form-control" value="{{ tire_set.manufacturer or '' if tire_set else '' }}"></div>
+    <div class="col-md-2"><label class="form-label">Model</label><input name="model" class="form-control" value="{{ tire_set.model or '' if tire_set else '' }}"></div>
+    <div class="col-md-2"><label class="form-label">Szerokość</label><input name="width" type="number" class="form-control" value="{{ tire_set.width or '' if tire_set else '' }}"></div>
+    <div class="col-md-2"><label class="form-label">Profil</label><input name="aspect_ratio" type="number" class="form-control" value="{{ tire_set.aspect_ratio or '' if tire_set else '' }}"></div>
+    <div class="col-md-2"><label class="form-label">Średnica</label><input name="diameter" type="number" class="form-control" value="{{ tire_set.diameter or '' if tire_set else '' }}"></div>
+    <div class="col-md-2"><label class="form-label">DOT</label><input name="dot" class="form-control" value="{{ tire_set.dot or '' if tire_set else '' }}"></div>
+    <div class="col-md-4"><label class="form-label">Felga</label><input name="rim" class="form-control" value="{{ tire_set.rim or '' if tire_set else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Zalecane ciśnienie</label><input name="recommended_pressure" class="form-control" value="{{ tire_set.recommended_pressure or '' if tire_set else '' }}"></div>
+    <div class="col-md-4"><label class="form-label">Miejsce przechowywania</label><input name="storage_location" class="form-control" value="{{ tire_set.storage_location or '' if tire_set else '' }}"></div>
+    <div class="col-md-5"><label class="form-label">Notatka</label><input name="note" class="form-control" value="{{ tire_set.note or '' if tire_set else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Status</label><select name="active" class="form-select"><option value="1" {% if not tire_set or tire_set.active %}selected{% endif %}>Aktywny</option><option value="0" {% if tire_set and not tire_set.active %}selected{% endif %}>Archiwalny</option></select></div>
+    <div class="col-12"><button class="btn btn-primary">Zapisz</button> <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='tires') }}">Anuluj</a></div>
+  </div>
+</form>
+{% endblock %}

@@ -28,6 +28,7 @@
         <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin_user_edit', user_id=u.id) }}">Edytuj</a>
         <form method="post" action="{{ url_for('admin_user_delete', user_id=u.id) }}" style="display:inline;"
               onsubmit="return confirm('Usunąć użytkownika {{ u.username }}?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-sm btn-outline-danger">Usuń</button>
         </form>
       </td>

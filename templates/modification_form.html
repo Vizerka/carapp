@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edytuj' if modification else 'Dodaj' }} modyfikację{% endblock %}
+{% block content %}
+<h2 class="mb-3">{{ 'Edytuj' if modification else 'Dodaj' }} modyfikację — {{ car.make }} {{ car.model }}</h2>
+<form method="post" class="card p-3 mb-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="row g-3">
+    <div class="col-md-6"><label class="form-label">Nazwa projektu</label><input name="title" class="form-control" value="{{ modification.title if modification else '' }}" required></div>
+    <div class="col-md-3"><label class="form-label">Status</label><select name="status" class="form-select">{% for key,label in statuses.items() %}<option value="{{ key }}" {% if modification and modification.status == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><label class="form-label">Start</label><input type="date" name="started_date" class="form-control" value="{{ modification.started_date.isoformat() if modification and modification.started_date else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Zakończenie</label><input type="date" name="completed_date" class="form-control" value="{{ modification.completed_date.isoformat() if modification and modification.completed_date else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Budżet</label><input name="estimated_cost" class="form-control" value="{{ modification.estimated_cost or '' if modification else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Koszt rzeczywisty</label><input name="actual_cost" class="form-control" value="{{ modification.actual_cost or '' if modification else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Notatka</label><input name="note" class="form-control" value="{{ modification.note or '' if modification else '' }}"></div>
+    <div class="col-12"><label class="form-label">Opis</label><textarea name="description" class="form-control" rows="3">{{ modification.description or '' if modification else '' }}</textarea></div>
+    <div class="col-12"><button class="btn btn-primary">Zapisz</button> <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='mods') }}">Anuluj</a></div>
+  </div>
+</form>
+
+{% if modification %}
+<div class="card p-3">
+  <h5>Checklista</h5>
+  {% for task in modification.tasks %}
+    <div class="d-flex justify-content-between align-items-center border-top py-2">
+      <form method="post" action="{{ url_for('modification_task_toggle', task_id=task.id) }}" class="d-flex align-items-center gap-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm {{ 'btn-success' if task.done else 'btn-outline-secondary' }}">{{ '✓' if task.done else '○' }}</button>
+        <span class="{{ 'text-decoration-line-through text-muted' if task.done else '' }}">{{ task.title }}</span>
+      </form>
+      <form method="post" action="{{ url_for('modification_task_delete', task_id=task.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm btn-outline-danger">Usuń</button>
+      </form>
+    </div>
+  {% endfor %}
+  <form method="post" action="{{ url_for('modification_task_new', modification_id=modification.id) }}" class="input-group mt-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="title" class="form-control" placeholder="Nowe zadanie" required><button class="btn btn-primary">Dodaj</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

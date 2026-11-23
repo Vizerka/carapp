@@ -1,0 +1,108 @@
+{% from "car/_history_chart.html" import history_chart %}
+{# ============================================================
+   TANKOWANIA (PAGINACJA)
+   ============================================================ #}
+{% if tab == 'fuel' %}
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Tankowania ⛽</h5>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalFuel">Dodaj tankowanie</button>
+  </div>
+
+  <div class="row g-2 mb-3">
+    {% set cards = [
+      ('Ostatnie spalanie', fuel_stats.last, 'L/100 km'),
+      ('Średnia z 5', fuel_stats.average_5, 'L/100 km'),
+      ('Średnia z 10', fuel_stats.average_10, 'L/100 km'),
+      ('Średnia 12 miesięcy', fuel_stats.average_12m, 'L/100 km'),
+      ('Średnia całości', fuel_stats.average_all, 'L/100 km'),
+      ('Minimum / maksimum', none, '')
+    ] %}
+    {% for label,value,unit in cards %}
+      <div class="col-md-4 col-xl-2"><div class="card p-2 h-100">
+        <div class="small text-muted">{{ label }}</div>
+        <div class="fw-semibold">
+          {% if label == 'Minimum / maksimum' %}
+            {% if fuel_stats.minimum is not none %}{{ "%.2f"|format(fuel_stats.minimum) }} / {{ "%.2f"|format(fuel_stats.maximum) }}{% else %}—{% endif %}
+          {% elif value is not none %}{{ "%.2f"|format(value) }} {{ unit }}{% else %}—{% endif %}
+        </div>
+      </div></div>
+    {% endfor %}
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-4"><div class="card p-3 h-100">
+      <div class="small text-muted">Średnia cena paliwa</div>
+      <div class="fs-5 fw-semibold">{% if fuel_stats.average_price is not none %}{{ "%.3f"|format(fuel_stats.average_price) }} PLN/L{% else %}—{% endif %}</div>
+      <div class="small mt-2">Najtańsza stacja: {% if fuel_stats.cheapest_station %}<b>{{ fuel_stats.cheapest_station[0] }}</b> ({{ "%.3f"|format(fuel_stats.cheapest_station[1]|float) }} PLN/L){% else %}—{% endif %}</div>
+    </div></div>
+    <div class="col-lg-4"><div class="card p-3 h-100">
+      <div class="small text-muted">W tym roku</div>
+      <div class="fs-5 fw-semibold">{{ "%.2f"|format(fuel_stats.year_liters) }} L</div>
+      <div class="small">{{ "%.2f"|format(fuel_stats.year_cost) }} PLN</div>
+    </div></div>
+    <div class="col-lg-4"><div class="card p-3 h-100">
+      <div class="small text-muted">Najdroższe tankowanie</div>
+      {% if fuel_stats.highest_fill %}<div class="fs-5 fw-semibold">{{ "%.2f"|format(fuel_stats.highest_fill.total_cost|float) }} PLN</div><div class="small">{{ fuel_stats.highest_fill.date }} · {{ fuel_stats.highest_fill.liters }} L</div>{% else %}<div>—</div>{% endif %}
+    </div></div>
+  </div>
+
+  {% set has_cons = (cons_values | reject('none') | list | length) > 0 %}
+  <div class="row g-3 mb-3">
+    <div class="col-xl-6">
+      {{ history_chart(
+        'Spalanie (pełny → pełny)', 'fuel-consumption-history',
+        (consumption_points if has_cons else []), 'value', 'Spalanie [L/100 km]',
+        'L/100 km', 'Spalanie pełny → pełny', 'wynik', 'wyników', 0.5, 2,
+        'Potrzebne są dwa pełne tankowania bez przerwy w zapisach.',
+        'fuel-history-chart', 'data-consumption-chart'
+      ) }}
+    </div>
+    <div class="col-xl-6">
+      {{ history_chart(
+        'Cena paliwa', 'fuel-price-history', fuel_price_points, 'value',
+        'Cena [PLN/L]', 'PLN/L', 'Cena paliwa', 'pomiar', 'pomiarów', 0.1, 3,
+        'Brak tankowań z ceną paliwa.',
+        'fuel-history-chart', 'data-fuel-price-chart'
+      ) }}
+    </div>
+  </div>
+
+  <div class="card p-3">
+    <div class="text-muted small mb-2">
+      {{ fills_p.total }} wpisów · strona {{ fills_p.page }} / {{ fills_p.pages }}
+    </div>
+
+    <ul class="list-unstyled small mb-0">
+      {% for f in fills_p.items %}
+        <li class="d-flex justify-content-between align-items-center border-top py-2">
+          <span>
+            <strong>{{ f.date }}</strong> — {{ f.km }} km — {{ f.liters }} L
+            {% if f.total_cost %} — {{ f.total_cost }} PLN{% endif %}
+            {% if f.price_per_l %} — {{ f.price_per_l }} PLN/L{% endif %}
+            {% if f.station %} — <em>{{ f.station }}</em>{% endif %}
+            {% if f.full_tank %}
+              — <span class="badge text-bg-success">pełny</span>
+            {% else %}
+              — <span class="badge text-bg-secondary">niepełny</span>
+            {% endif %}
+            {% if f.unrecorded_refuels_since_last_full %}
+              — <span class="badge text-bg-warning">przerwa w zapisach</span>
+            {% endif %}
+            {% if f.note %} — {{ f.note }}{% endif %}
+          </span>
+          <span class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('fuel_edit', fill_id=f.id) }}">Edytuj</a>
+            <form method="post" action="{{ url_for('fuel_delete', fill_id=f.id) }}" onsubmit="return confirm('Usunąć tankowanie?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger">Usuń</button>
+            </form>
+          </span>
+        </li>
+      {% else %}
+        <li class="text-muted">Brak tankowań.</li>
+      {% endfor %}
+    </ul>
+
+    {{ pager(fills_p, 'fuel', 'fuel_page') }}
+  </div>
+{% endif %}

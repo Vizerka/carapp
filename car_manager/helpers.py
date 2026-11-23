@@ -4,7 +4,6 @@ import os
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from flask import current_app
-from sqlalchemy import desc, func
 from sqlalchemy.inspection import inspect as sa_inspect
 
 from .extensions import db
@@ -143,19 +142,44 @@ def compute_interval_status(iv: ServiceInterval, current_km: int | None, today: 
         "status": status,
     }
 
-def upsert_odometer_for_date(car_id: int, when: date, km: int, note: str | None = None):
-    existing = (OdometerEntry.query
-                .filter(OdometerEntry.car_id == car_id, OdometerEntry.date == when)
-                .order_by(desc(OdometerEntry.id))
-                .first())
+def sync_source_odometer(
+    *, car_id: int, when: date, km: int, source_type: str, source_id: int,
+    note: str | None = None,
+):
+    """Tworzy albo aktualizuje dokładnie jeden wpis przebiegu danego źródła."""
+    entry = OdometerEntry.query.filter_by(
+        source_type=source_type,
+        source_id=source_id,
+    ).one_or_none()
+    if entry is None:
+        entry = OdometerEntry(source_type=source_type, source_id=source_id)
+        db.session.add(entry)
 
-    if existing:
-        if km > existing.km:
-            existing.km = km
-        if note:
-            existing.note = f"{existing.note}; {note}" if existing.note else note
-        return existing
+    entry.car_id = car_id
+    entry.date = when
+    entry.km = km
+    entry.note = note
+    return entry
 
+
+def delete_source_odometer(*, source_type: str, source_id: int) -> None:
+    entry = OdometerEntry.query.filter_by(
+        source_type=source_type,
+        source_id=source_id,
+    ).one_or_none()
+    if entry is not None:
+        db.session.delete(entry)
+
+
+def source_odometer_id(*, source_type: str, source_id: int) -> int | None:
+    entry = OdometerEntry.query.filter_by(
+        source_type=source_type,
+        source_id=source_id,
+    ).one_or_none()
+    return entry.id if entry is not None else None
+
+
+def create_manual_odometer(car_id: int, when: date, km: int, note: str | None = None):
     entry = OdometerEntry(car_id=car_id, date=when, km=km, note=note)
     db.session.add(entry)
     return entry

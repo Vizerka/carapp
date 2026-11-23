@@ -3,4 +3,13 @@
 __pycache__/
 instance/
 .env
+.mail-reminders.*
 uploads/
+*.db
+*.db.*
+*.sqlite
+*.sqlite3
+.cache/
+.lesshst
+*.repo-seed
+uploads.repo-seed/

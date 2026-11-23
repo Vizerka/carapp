@@ -3,9 +3,11 @@ from __future__ import annotations
 from flask import render_template, request, redirect, url_for, flash
 
 from .extensions import db
-from .models import Car, InsurancePolicy
+from .models import InsurancePolicy
 from .helpers import parse_date
 from .validators import validate_insurance_interval
+from .access import get_car_or_404, get_owned_entry_or_404
+from .document_links import delete_links_for_target
 
 
 def init_routes(app):
@@ -15,7 +17,7 @@ def init_routes(app):
 
     @app.post("/cars/<int:car_id>/insurance/new")
     def insurance_new(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
         valid_from = parse_date(request.form.get("valid_from"))
         valid_to = parse_date(request.form.get("valid_to"))
 
@@ -39,7 +41,7 @@ def init_routes(app):
 
     @app.route("/insurance/<int:policy_id>/edit", methods=["GET", "POST"])
     def insurance_edit(policy_id):
-        policy = InsurancePolicy.query.get_or_404(policy_id)
+        policy = get_owned_entry_or_404(InsurancePolicy, policy_id)
         car = policy.car
 
         if request.method == "POST":
@@ -64,8 +66,9 @@ def init_routes(app):
 
     @app.post("/insurance/<int:policy_id>/delete")
     def insurance_delete(policy_id):
-        policy = InsurancePolicy.query.get_or_404(policy_id)
+        policy = get_owned_entry_or_404(InsurancePolicy, policy_id)
         car_id = policy.car_id
+        delete_links_for_target("insurance", policy.id)
         db.session.delete(policy)
         db.session.commit()
         flash("Usunięto polisę OC 🗑️", "success")

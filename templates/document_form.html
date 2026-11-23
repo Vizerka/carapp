@@ -20,6 +20,7 @@
 </div>
 
 <form method="post" enctype="multipart/form-data" class="row g-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="col-md-4">
     <label class="form-label">Kategoria</label>
     <input name="category" class="form-control" value="{{ doc.category or '' }}" placeholder="np. OC, Faktura">
@@ -28,6 +29,14 @@
   <div class="col-md-8">
     <label class="form-label">Notatka</label>
     <input name="note" class="form-control" value="{{ doc.note or '' }}" placeholder="opcjonalnie">
+  </div>
+
+  <div class="col-12">
+    <label class="form-label">Powiąż z wpisem</label>
+    <select name="target" class="form-select">
+      <option value="">Bez powiązania</option>
+      {% for option in target_options %}<option value="{{ option.value }}" {% if current_target == option.value %}selected{% endif %}>{{ option.label }}</option>{% endfor %}
+    </select>
   </div>
 
   <div class="col-12">

@@ -6,20 +6,30 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from flask import render_template, request, redirect, url_for, flash
+from flask_login import current_user
 from sqlalchemy import desc, func
 from sqlalchemy.exc import IntegrityError
 
 from .extensions import db
 from .models import (
     Car, OdometerEntry, InsurancePolicy, TechInspection,
-    ServiceEntry, FuelEntry, Document, ServiceInterval
+    ServiceEntry, FuelEntry, Document, ServiceInterval, Expense, Modification,
+    TireEvent, TireSet
 )
-from .helpers import parse_date, parse_decimal, compute_interval_status
+from .helpers import parse_date, compute_interval_status
+from .access import accessible_cars_query, get_car_or_404
+from .expense_categories import EXPENSE_CATEGORIES
+from .document_links import document_link_label, document_target_options
+from .routes_modifications import STATUSES as MODIFICATION_STATUSES
+from .routes_tires import SEASONS as TIRE_SEASONS
+from .routes_service_items import ITEM_TYPES as SERVICE_ITEM_TYPES
+from .statistics import fuel_statistics, tire_set_mileage
+from .timeline import build_timeline
 
 def init_routes(app):
     @app.get("/")
     def dashboard():
-        cars = Car.query.order_by(Car.make, Car.model).all()
+        cars = accessible_cars_query().order_by(Car.make, Car.model).all()
 
         upcoming_days = 60
         today = date.today()
@@ -46,14 +56,22 @@ def init_routes(app):
         oc_expired.sort(key=lambda t: t[1])
         ti_expired.sort(key=lambda t: t[1])
 
+        def deadlines(insurance, inspections):
+            rows = [(car, due, "OC") for car, due in insurance]
+            rows += [(car, due, "Przegląd") for car, due in inspections]
+            return sorted(rows, key=lambda row: row[1])
+
+        expired = deadlines(oc_expired, ti_expired)
+        upcoming = deadlines(oc_upcoming, ti_upcoming)
+        expired_ids = {car.id for car, _, _ in expired}
+        next_due = {}
+        for car, due, _ in upcoming:
+            next_due.setdefault(car.id, due)
+
         return render_template(
-            "index.html",
-            cars_count=len(cars),
-            oc_upcoming=oc_upcoming,
-            ti_upcoming=ti_upcoming,
-            oc_expired=oc_expired,
-            ti_expired=ti_expired,
-            upcoming_days=upcoming_days
+            "index.html", cars=cars, expired=expired, upcoming=upcoming,
+            attention=expired + [row for row in upcoming if (row[1] - today).days <= 7],
+            expired_ids=expired_ids, next_due=next_due, today=today,
         )
 
     @app.get("/about")
@@ -62,7 +80,7 @@ def init_routes(app):
 
     @app.get("/cars")
     def list_cars():
-        cars = Car.query.order_by(Car.make, Car.model).all()
+        cars = accessible_cars_query().order_by(Car.make, Car.model).all()
         return render_template("cars.html", cars=cars)
 
     @app.route("/cars/new", methods=["GET", "POST"])
@@ -76,6 +94,8 @@ def init_routes(app):
                 reg_number=(request.form.get("reg_number") or "").strip().upper() or None,
                 first_registration=parse_date(request.form.get("first_registration"))
             )
+            if not current_user.is_admin:
+                car.owners.append(current_user)
             db.session.add(car)
             try:
                 db.session.commit()
@@ -89,7 +109,7 @@ def init_routes(app):
 
     @app.route("/cars/<int:car_id>/edit", methods=["GET", "POST"])
     def car_edit(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
         if request.method == "POST":
             car.make = (request.form.get("make") or "").strip()
             car.model = (request.form.get("model") or "").strip()
@@ -110,7 +130,7 @@ def init_routes(app):
 
     @app.get("/cars/<int:car_id>")
     def car_detail(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
 
         # --- TAB + paginacja (oddzielna dla każdej listy) ---
         tab = request.args.get("tab", "dash")
@@ -119,11 +139,16 @@ def init_routes(app):
         svc_page  = request.args.get("svc_page", 1, type=int)
         docs_page = request.args.get("docs_page", 1, type=int)
         odo_page = request.args.get("odo_page", 1, type=int)
+        expense_page = request.args.get("expense_page", 1, type=int)
+        mods_page = request.args.get("mods_page", 1, type=int)
+        timeline_page = request.args.get("timeline_page", 1, type=int)
         
         PER_PAGE_ODO = 30
         PER_PAGE_FUEL = 20
         PER_PAGE_SVC  = 20
         PER_PAGE_DOCS = 15
+        PER_PAGE_EXPENSES = 20
+        PER_PAGE_MODS = 15
 
         odo_p = (
             car.odometer_entries
@@ -131,10 +156,16 @@ def init_routes(app):
             .paginate(page=odo_page, per_page=PER_PAGE_ODO, error_out=False)
         )
 
-        # wykres zostaw jak masz:
         odo_asc = car.odometer_entries.order_by(OdometerEntry.date.asc(), OdometerEntry.id.asc()).all()
-        odo_labels = [e.date.isoformat() for e in odo_asc]
-        odo_values = [e.km for e in odo_asc]
+        mileage_points = [
+            {
+                "id": entry.id,
+                "date": entry.date.isoformat(),
+                "km": entry.km,
+                "label": entry.note or "Odczyt licznika",
+            }
+            for entry in odo_asc
+        ]
 
         # --- OC / TI bez paginacji (zwykle mało) ---
         oc = car.insurance_policies.order_by(desc(InsurancePolicy.valid_to), desc(InsurancePolicy.id)).all()
@@ -154,6 +185,26 @@ def init_routes(app):
             .paginate(page=docs_page, per_page=PER_PAGE_DOCS, error_out=False)
         )
 
+        expenses_p = (
+            car.expenses
+            .order_by(desc(Expense.date), desc(Expense.id))
+            .paginate(page=expense_page, per_page=PER_PAGE_EXPENSES, error_out=False)
+        )
+
+        modifications_p = (
+            car.modifications
+            .order_by(desc(Modification.id))
+            .paginate(page=mods_page, per_page=PER_PAGE_MODS, error_out=False)
+        )
+
+        tire_sets = car.tire_sets.order_by(TireSet.active.desc(), TireSet.name.asc()).all()
+        tire_events = {
+            tire_set.id: tire_set.events.order_by(
+                desc(TireEvent.date), desc(TireEvent.id)
+            ).all()
+            for tire_set in tire_sets
+        }
+
         # --- Paginacja: tankowania ---
         fills_p = (
             car.fuel_entries
@@ -163,62 +214,147 @@ def init_routes(app):
 
         # --- Do wykresu spalania potrzebujemy ASC (pełny->pełny) ---
         fills_asc = car.fuel_entries.order_by(FuelEntry.date.asc(), FuelEntry.id.asc()).all()
+        dashboard_fills = list(reversed(fills_asc))
+        fuel_stats = fuel_statistics(fills_asc)
 
-        # --- SUMY kosztów (bez zmian) ---
-        fuel_total = db.session.query(func.sum(FuelEntry.total_cost)).filter(
+        # --- Pełny koszt posiadania + okres raportu ---
+        today = date.today()
+        cost_period = request.args.get("cost_period", "all")
+        if cost_period not in {"all", "year", "12m"}:
+            cost_period = "all"
+
+        cost_since = None
+        if cost_period == "year":
+            cost_since = date(today.year, 1, 1)
+        elif cost_period == "12m":
+            cost_since = today - timedelta(days=365)
+
+        fuel_query = db.session.query(func.sum(FuelEntry.total_cost)).filter(
             FuelEntry.car_id == car.id, FuelEntry.total_cost.isnot(None)
-        ).scalar()
-
-        service_total = db.session.query(func.sum(ServiceEntry.cost)).filter(
+        )
+        service_query = db.session.query(func.sum(ServiceEntry.cost)).filter(
             ServiceEntry.car_id == car.id, ServiceEntry.cost.isnot(None)
-        ).scalar()
+        )
+        expense_query = db.session.query(func.sum(Expense.amount)).filter(
+            Expense.car_id == car.id
+        )
+        modification_query = db.session.query(func.sum(Modification.actual_cost)).filter(
+            Modification.car_id == car.id, Modification.actual_cost.isnot(None)
+        )
 
-        if fuel_total is not None:
-            fuel_total = Decimal(fuel_total)
-        if service_total is not None:
-            service_total = Decimal(service_total)
+        if cost_since is not None:
+            fuel_query = fuel_query.filter(FuelEntry.date >= cost_since)
+            service_query = service_query.filter(ServiceEntry.date >= cost_since)
+            expense_query = expense_query.filter(Expense.date >= cost_since)
+            modification_query = modification_query.filter(
+                func.coalesce(Modification.completed_date, Modification.started_date) >= cost_since
+            )
+
+        fuel_total = fuel_query.scalar()
+        service_total = service_query.scalar()
+        expense_total = expense_query.scalar()
+        modification_total = modification_query.scalar()
+
+        fuel_total = Decimal(fuel_total) if fuel_total is not None else None
+        service_total = Decimal(service_total) if service_total is not None else None
+        expense_total = Decimal(expense_total) if expense_total is not None else None
+        modification_total = Decimal(modification_total) if modification_total is not None else None
 
         total_cost = None
-        if fuel_total is not None or service_total is not None:
-            total_cost = (fuel_total or Decimal("0")) + (service_total or Decimal("0"))
+        if any(value is not None for value in (fuel_total, service_total, expense_total, modification_total)):
+            total_cost = sum(
+                (value or Decimal("0") for value in (
+                    fuel_total, service_total, expense_total, modification_total
+                )),
+                Decimal("0"),
+            )
+
+        expense_breakdown_query = db.session.query(
+            Expense.category, func.sum(Expense.amount)
+        ).filter(Expense.car_id == car.id)
+        if cost_since is not None:
+            expense_breakdown_query = expense_breakdown_query.filter(Expense.date >= cost_since)
+        expense_breakdown = [
+            {
+                "key": category,
+                "label": EXPENSE_CATEGORIES.get(category, category),
+                "amount": Decimal(amount),
+            }
+            for category, amount in expense_breakdown_query.group_by(Expense.category).all()
+        ]
+        cost_breakdown = [
+            {"key": "fuel", "label": "Paliwo", "amount": fuel_total or Decimal("0")},
+            {"key": "service", "label": "Serwis", "amount": service_total or Decimal("0")},
+            {
+                "key": "modification",
+                "label": "Modyfikacje",
+                "amount": modification_total or Decimal("0"),
+            },
+            *expense_breakdown,
+        ]
+        cost_breakdown = [row for row in cost_breakdown if row["amount"] > 0]
+        cost_breakdown.sort(key=lambda row: row["amount"], reverse=True)
 
         distance = None
         cost_per_km = None
-        if len(odo_values) >= 2:
-            dist = odo_values[-1] - odo_values[0]
+        if cost_since is None:
+            cost_odo_entries = car.odometer_entries.order_by(
+                OdometerEntry.date.asc(), OdometerEntry.id.asc()
+            ).all()
+        else:
+            baseline = car.odometer_entries.filter(
+                OdometerEntry.date < cost_since
+            ).order_by(
+                OdometerEntry.date.desc(), OdometerEntry.id.desc()
+            ).first()
+            cost_odo_entries = car.odometer_entries.filter(
+                OdometerEntry.date >= cost_since
+            ).order_by(
+                OdometerEntry.date.asc(), OdometerEntry.id.asc()
+            ).all()
+            if baseline is not None:
+                cost_odo_entries.insert(0, baseline)
+
+        cost_odo_values = [entry.km for entry in cost_odo_entries]
+        if len(cost_odo_values) >= 2:
+            dist = cost_odo_values[-1] - cost_odo_values[0]
             if dist > 0:
                 distance = dist
                 if total_cost is not None:
                     cost_per_km = (total_cost / Decimal(dist))
 
-        # --- Wykres spalania (bez zmian w logice) ---
-        cons_labels: list[str] = []
-        cons_values: list[float] = []
-
-        last_full = None
-        liters_acc = Decimal("0")
-
-        for f in fills_asc:
-            if last_full is None:
-                if f.full_tank:
-                    last_full = f
-                    liters_acc = Decimal("0")
+        # Pełne tankowanie z przerwą zamyka poprzedni odcinek bez wyniku.
+        cons_labels = fuel_stats["labels"]
+        cons_values = fuel_stats["values"]
+        consumption_points = [
+            {
+                "id": index,
+                "date": label,
+                "value": value,
+                "label": "Spalanie pełny → pełny",
+            }
+            for index, (label, value) in enumerate(
+                zip(cons_labels, cons_values),
+                start=1,
+            )
+        ]
+        fuel_price_points = []
+        for fill in fills_asc:
+            liters = Decimal(fill.liters or 0)
+            total_cost_for_fill = (
+                Decimal(fill.total_cost) if fill.total_cost is not None else None
+            )
+            price = Decimal(fill.price_per_l) if fill.price_per_l is not None else None
+            if price is None and total_cost_for_fill is not None and liters > 0:
+                price = total_cost_for_fill / liters
+            if price is None:
                 continue
-
-            liters_acc += Decimal(f.liters or 0)
-
-            if f.full_tank:
-                km1 = int(last_full.km)
-                km2 = int(f.km)
-                dist = km2 - km1
-
-                if dist > 0:
-                    l_per_100 = (liters_acc / Decimal(dist)) * Decimal("100")
-                    cons_labels.append(f.date.isoformat())
-                    cons_values.append(float(l_per_100))
-
-                last_full = f
-                liters_acc = Decimal("0")
+            fuel_price_points.append({
+                "id": fill.id,
+                "date": fill.date.isoformat(),
+                "value": float(price),
+                "label": fill.station or fill.note or "Tankowanie",
+            })
 
         # --- Interwały (bez zmian) ---
         intervals = (
@@ -228,7 +364,6 @@ def init_routes(app):
             .all()
         )
 
-        today = date.today()
         current_km = car.last_odometer.km if car.last_odometer else None
 
         interval_reminders = []
@@ -239,13 +374,57 @@ def init_routes(app):
         order = {"due": 0, "soon": 1, "ok": 2, "unknown": 3}
         interval_reminders.sort(key=lambda t: order.get(t[1]["status"], 9))
 
+        def deadline_summary(kind, title, entry, modal_id):
+            valid_to = entry.valid_to if entry is not None else None
+            days_left = (valid_to - today).days if valid_to is not None else None
+            if days_left is None:
+                status = "unknown"
+            elif days_left < 0:
+                status = "due"
+            elif days_left <= 60:
+                status = "soon"
+            else:
+                status = "ok"
+            return {
+                "kind": kind,
+                "title": title,
+                "valid_to": valid_to,
+                "days_left": days_left,
+                "status": status,
+                "modal_id": modal_id,
+            }
+
+        dashboard_deadlines = [
+            deadline_summary("insurance", "Ubezpieczenie OC", oc[0] if oc else None, "modalOC"),
+            deadline_summary("inspection", "Badanie techniczne", ti[0] if ti else None, "modalTI"),
+        ]
+
+        timeline_kind = (request.args.get("timeline_kind") or "").strip() or None
+        timeline_p = build_timeline(
+            car,
+            page=timeline_page,
+            kind=timeline_kind,
+        )
+        current_km_for_tires = current_km
+        tire_mileages = {
+            tire_set.id: tire_set_mileage(tire_set, current_km_for_tires)
+            for tire_set in tire_sets
+        }
+        document_links = {
+            document.id: [document_link_label(link) for link in document.links]
+            for document in docs_p.items
+        }
+        target_documents = {}
+        for document in car.documents.all():
+            for link in document.links:
+                target_documents.setdefault((link.target_type, link.target_id), []).append(document)
+
         return render_template(
             "car_detail.html",
             car=car,
             tab=tab,
 
-            odo_labels=odo_labels,
-            odo_values=odo_values,
+            mileage_points=mileage_points,
 
             oc=oc,
             ti=ti,
@@ -254,25 +433,54 @@ def init_routes(app):
             services_p=services_p,
             docs_p=docs_p,
             fills_p=fills_p,
+            dashboard_fills=dashboard_fills,
+            expenses_p=expenses_p,
+            modifications_p=modifications_p,
+            tire_sets=tire_sets,
+            tire_mileages=tire_mileages,
+            tire_events=tire_events,
+            timeline_p=timeline_p,
+            timeline_kind=timeline_kind,
 
             fuel_total=fuel_total,
             service_total=service_total,
+            expense_total=expense_total,
+            modification_total=modification_total,
+            additional_total=(expense_total or Decimal("0")) + (
+                modification_total or Decimal("0")
+            ),
             total_cost=total_cost,
             distance=distance,
             cost_per_km=cost_per_km,
+            cost_period=cost_period,
+            cost_breakdown=cost_breakdown,
+            expense_categories=EXPENSE_CATEGORIES,
 
             cons_labels=cons_labels,
             cons_values=cons_values,
+            consumption_points=consumption_points,
+            fuel_price_points=fuel_price_points,
+            fuel_stats=fuel_stats,
+            fuel_price_labels=fuel_stats["price_labels"],
+            fuel_price_values=fuel_stats["price_values"],
 
             intervals=intervals,
             interval_reminders=interval_reminders,
             current_km=current_km,
+            dashboard_deadlines=dashboard_deadlines,
+            today=today,
             odo_p=odo_p,
+            document_target_options=document_target_options(car),
+            document_links=document_links,
+            target_documents=target_documents,
+            modification_statuses=MODIFICATION_STATUSES,
+            tire_seasons=TIRE_SEASONS,
+            service_item_types=SERVICE_ITEM_TYPES,
         )
 
     @app.post("/cars/<int:car_id>/delete")
     def car_delete(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
         upload_dir = os.path.join(app.config["UPLOAD_FOLDER"], str(car.id))
 
         try:

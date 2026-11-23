@@ -1,0 +1,14 @@
+<div class="row g-2">
+  <div class="col-md-2">
+    <label class="form-label">Typ</label>
+    <select name="item_type" class="form-select">
+      {% for key, label in item_types.items() %}<option value="{{ key }}" {% if item and item.item_type == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4"><label class="form-label">Nazwa</label><input name="name" class="form-control" value="{{ item.name if item else '' }}" required></div>
+  <div class="col-md-3"><label class="form-label">Producent</label><input name="manufacturer" class="form-control" value="{{ item.manufacturer or '' if item else '' }}"></div>
+  <div class="col-md-3"><label class="form-label">Numer części</label><input name="part_number" class="form-control" value="{{ item.part_number or '' if item else '' }}"></div>
+  <div class="col-md-2"><label class="form-label">Ilość</label><input name="quantity" class="form-control" value="{{ item.quantity if item else '1' }}" required></div>
+  <div class="col-md-3"><label class="form-label">Cena szt.</label><input name="unit_price" class="form-control" value="{{ item.unit_price or '' if item else '' }}"></div>
+  <div class="col-md-7"><label class="form-label">Notatka</label><input name="note" class="form-control" value="{{ item.note or '' if item else '' }}"></div>
+</div>

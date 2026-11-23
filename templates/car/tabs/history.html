@@ -1,0 +1,45 @@
+{% if tab == 'history' %}
+  {% set kinds = {
+    'fuel': 'Tankowania', 'service': 'Serwis', 'odometer': 'Przebieg',
+    'insurance': 'OC', 'inspection': 'Przeglądy', 'expense': 'Wydatki',
+    'tires': 'Opony', 'modification': 'Modyfikacje'
+  } %}
+  {% set icons = {
+    'fuel': '⛽', 'service': '🔧', 'odometer': '📏', 'insurance': '📄',
+    'inspection': '🔍', 'expense': '💸', 'tires': '🛞', 'modification': '🧰'
+  } %}
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h5 class="mb-0">Historia samochodu</h5>
+    <div class="d-flex flex-wrap gap-1">
+      <a class="btn btn-sm btn-outline-secondary {% if not timeline_kind %}active{% endif %}"
+         href="{{ url_for('car_detail', car_id=car.id, tab='history') }}">Wszystko</a>
+      {% for key, label in kinds.items() %}
+        <a class="btn btn-sm btn-outline-secondary {% if timeline_kind == key %}active{% endif %}"
+           href="{{ url_for('car_detail', car_id=car.id, tab='history', timeline_kind=key) }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card p-3">
+    {% for event in timeline_p.items %}
+      <div class="d-flex gap-3 border-bottom py-3">
+        <div class="fs-4" style="width:2rem;">{{ icons.get(event.kind, '•') }}</div>
+        <div class="flex-grow-1">
+          <div class="d-flex flex-wrap justify-content-between gap-2">
+            <div class="fw-semibold">{{ event.title }}</div>
+            <div class="text-muted">{{ event.date }}</div>
+          </div>
+          {% if event.details %}<div class="small text-muted">{{ event.details }}</div>{% endif %}
+          <div class="small mt-1">
+            {% if event.km is not none %}<span class="me-3">{{ event.km }} km</span>{% endif %}
+            {% if event.cost is not none %}<span>{{ "%.2f"|format(event.cost|float) }} PLN</span>{% endif %}
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="text-muted">Brak zdarzeń dla wybranego filtra.</div>
+    {% endfor %}
+    {{ pager(timeline_p, 'history', 'timeline_page') }}
+  </div>
+{% endif %}

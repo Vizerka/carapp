@@ -1,0 +1,12 @@
+[Unit]
+Description=Car Manager email reminders
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=carapp
+WorkingDirectory=/opt/carapp
+EnvironmentFile=/opt/carapp/.env
+UMask=0077
+ExecStart=/opt/carapp/.venv/bin/python -m flask --app app send-reminders

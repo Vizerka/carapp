@@ -14,6 +14,7 @@
   <p class="text-muted small mb-2">Wgraj ZIP z eksportu. Import działa w trybie „merge” (dokleja dane). </p>
 
   <form method="post" action="{{ url_for('backup_import') }}" enctype="multipart/form-data" class="row g-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="col-md-8">
       <input class="form-control" type="file" name="file" accept=".zip" required>
     </div>

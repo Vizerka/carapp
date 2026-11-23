@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Edytuj wydatek{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="mb-1">Edytuj wydatek</h2>
+    <div class="text-muted">{{ car.make }} {{ car.model }}</div>
+  </div>
+  <a class="btn btn-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='expenses') }}">Anuluj</a>
+</div>
+
+<form method="post" class="card p-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">Data</label>
+      <input type="date" name="date" class="form-control" value="{{ expense.date.isoformat() }}" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Kategoria</label>
+      <select name="category" class="form-select" required>
+        {% for key, label in expense_categories.items() %}
+          <option value="{{ key }}" {% if expense.category == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Kwota PLN</label>
+      <input type="text" name="amount" class="form-control" value="{{ expense.amount }}" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Przebieg</label>
+      <input type="number" name="km" class="form-control" min="0" step="1" value="{{ expense.km if expense.km is not none else '' }}">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Nazwa wydatku</label>
+      <input type="text" name="title" class="form-control" value="{{ expense.title }}" required>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">Sprzedawca / firma</label>
+      <input type="text" name="vendor" class="form-control" value="{{ expense.vendor or '' }}">
+    </div>
+    <div class="col-12">
+      <label class="form-label">Notatka</label>
+      <input type="text" name="note" class="form-control" value="{{ expense.note or '' }}">
+    </div>
+    <div class="col-12 text-end">
+      <button class="btn btn-primary" type="submit">Zapisz</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

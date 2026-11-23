@@ -18,9 +18,11 @@
       <td>{{ "TAK" if u.is_admin else "NIE" }}</td>
       <td>
         <form method="post" action="{{ url_for('admin_toggle_user_active', user_id=u.id) }}" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit">Toggle active</button>
         </form>
         <form method="post" action="{{ url_for('admin_toggle_user_admin', user_id=u.id) }}" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit">Toggle admin</button>
         </form>
       </td>

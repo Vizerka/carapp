@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from flask import render_template, request, redirect, url_for, flash
-from sqlalchemy import desc
-
 from .extensions import db
-from .models import Car, OdometerEntry
+from .models import OdometerEntry
 from .helpers import parse_date
 from .validators import validate_odometer
+from .access import get_car_or_404, get_owned_entry_or_404
 
 
 def init_routes(app):
@@ -16,7 +15,7 @@ def init_routes(app):
 
     @app.post("/cars/<int:car_id>/odometer/new")
     def odometer_new(car_id):
-        car = Car.query.get_or_404(car_id)
+        car = get_car_or_404(car_id)
         when = parse_date(request.form.get("date"))
         km = int(request.form.get("km") or 0)
 
@@ -38,8 +37,12 @@ def init_routes(app):
 
     @app.route("/odometer/<int:entry_id>/edit", methods=["GET", "POST"])
     def odometer_edit(entry_id):
-        entry = OdometerEntry.query.get_or_404(entry_id)
+        entry = get_owned_entry_or_404(OdometerEntry, entry_id)
         car = entry.car
+
+        if entry.source_type:
+            flash("Ten przebieg jest zarządzany przez powiązane tankowanie albo serwis.", "warning")
+            return redirect(url_for("car_detail", car_id=car.id))
 
         if request.method == "POST":
             when = parse_date(request.form.get("date"))
@@ -62,8 +65,11 @@ def init_routes(app):
 
     @app.post("/odometer/<int:entry_id>/delete")
     def odometer_delete(entry_id):
-        entry = OdometerEntry.query.get_or_404(entry_id)
+        entry = get_owned_entry_or_404(OdometerEntry, entry_id)
         car_id = entry.car_id
+        if entry.source_type:
+            flash("Automatyczny wpis usuń razem z powiązanym tankowaniem albo serwisem.", "warning")
+            return redirect(url_for("car_detail", car_id=car_id))
         db.session.delete(entry)
         db.session.commit()
         flash("Usunięto wpis przebiegu 🗑️", "success")

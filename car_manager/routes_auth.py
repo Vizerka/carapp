@@ -66,7 +66,7 @@ def init_routes(app: Flask) -> None:
         flash("Zalogowano ✅", "success")
         return redirect(_safe_next_url(default=url_for("dashboard")))
 
-    @app.get("/logout")
+    @app.post("/logout")
     @login_required
     def logout():
         logout_user()

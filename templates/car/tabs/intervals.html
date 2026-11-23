@@ -1,0 +1,69 @@
+{% if tab == 'iv' %}
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+      <h5 class="mb-1">Plan serwisowy</h5>
+      <div class="text-muted small">
+        Każdy termin pokazuje osobno pozostały czas i kilometry.
+        {% if current_km is not none %} Aktualny przebieg: <strong>{{ current_km }} km</strong>.{% endif %}
+      </div>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalInterval">Dodaj pozycję</button>
+  </div>
+
+  <div class="row g-3">
+    {% for iv, c in interval_reminders %}
+      {% set tone = 'secondary' %}
+      {% if c.status == 'due' %}{% set tone = 'danger' %}
+      {% elif c.status == 'soon' %}{% set tone = 'warning' %}
+      {% elif c.status == 'ok' %}{% set tone = 'success' %}{% endif %}
+      <div class="col-lg-6">
+        <article class="service-plan-card service-plan-card--{{ c.status }} h-100">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div><h6 class="mb-1">{{ iv.name }}</h6>{% if iv.note %}<div class="text-muted small">{{ iv.note }}</div>{% endif %}</div>
+            <span class="badge text-bg-{{ tone }}">
+              {% if c.status == 'due' %}po terminie{% elif c.status == 'soon' %}zbliża się{% elif c.status == 'ok' %}zaplanowane{% else %}uzupełnij dane{% endif %}
+            </span>
+          </div>
+
+          <div class="service-plan-metrics">
+            <div>
+              <span class="service-plan-label">Przebieg</span>
+              {% if c.next_km is none %}<strong>Nie ustawiono</strong>
+              {% elif c.km_left is none %}<strong>przy {{ c.next_km }} km</strong>
+              {% elif c.km_left < 0 %}<strong class="text-danger">przekroczono o {{ -c.km_left }} km</strong>
+              {% elif c.km_left == 0 %}<strong class="text-danger">termin osiągnięty</strong>
+              {% else %}<strong>zostało {{ c.km_left }} km</strong>{% endif %}
+              {% if c.next_km is not none %}<small>następny: {{ c.next_km }} km</small>{% endif %}
+            </div>
+            <div>
+              <span class="service-plan-label">Czas</span>
+              {% if c.next_date is none %}<strong>Nie ustawiono</strong>
+              {% elif c.days_left is none %}<strong>{{ c.next_date }}</strong>
+              {% elif c.days_left < 0 %}<strong class="text-danger">{{ -c.days_left }} dni po terminie</strong>
+              {% elif c.days_left == 0 %}<strong class="text-danger">dzisiaj</strong>
+              {% else %}<strong>za {{ c.days_left }} dni</strong>{% endif %}
+              {% if c.next_date is not none %}<small>następny: {{ c.next_date }}</small>{% endif %}
+            </div>
+          </div>
+
+          <form method="post" action="{{ url_for('interval_mark_done', interval_id=iv.id) }}" class="row g-2 mt-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-sm-5"><label class="form-label small mb-1">Wykonano dnia</label><input type="date" name="date" value="{{ today }}" class="form-control form-control-sm"></div>
+            <div class="col-sm-4"><label class="form-label small mb-1">Przy przebiegu</label><input type="number" name="km" class="form-control form-control-sm" placeholder="km" min="0" step="1"></div>
+            <div class="col-sm-3 d-grid align-items-end"><button class="btn btn-sm btn-success">Zrobione</button></div>
+          </form>
+
+          <div class="d-flex gap-2 mt-3 pt-3 border-top">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('interval_edit', interval_id=iv.id) }}">Edytuj</a>
+            <form method="post" action="{{ url_for('interval_delete', interval_id=iv.id) }}" onsubmit="return confirm('Usunąć pozycję planu serwisowego?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger">Usuń</button>
+            </form>
+          </div>
+        </article>
+      </div>
+    {% else %}
+      <div class="col-12"><div class="dashboard-empty-state">Plan serwisowy jest pusty. Dodaj pierwszy interwał i ustaw termin w dniach, kilometrach albo w obu naraz.</div></div>
+    {% endfor %}
+  </div>
+{% endif %}

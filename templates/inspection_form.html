@@ -3,6 +3,7 @@
 {% block content %}
 <h2>Edytuj przegląd — {{ car.make }} {{ car.model }}</h2>
 <form method="post" class="row g-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="col-md-3">
     <label class="form-label">Data badania</label>
     <input type="date" name="date" class="form-control" value="{{ ins.date }}" required>
