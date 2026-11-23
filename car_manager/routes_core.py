@@ -205,6 +205,7 @@ def init_routes(app):
 
         # --- Do wykresu spalania potrzebujemy ASC (pełny->pełny) ---
         fills_asc = car.fuel_entries.order_by(FuelEntry.date.asc(), FuelEntry.id.asc()).all()
+        dashboard_fills = list(reversed(fills_asc))
         fuel_stats = fuel_statistics(fills_asc)
 
         # --- Pełny koszt posiadania + okres raportu ---
@@ -406,6 +407,7 @@ def init_routes(app):
             services_p=services_p,
             docs_p=docs_p,
             fills_p=fills_p,
+            dashboard_fills=dashboard_fills,
             expenses_p=expenses_p,
             modifications_p=modifications_p,
             tire_sets=tire_sets,

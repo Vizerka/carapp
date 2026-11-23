@@ -51,3 +51,30 @@
     recalc();
   });
 })();
+
+(function () {
+  const popovers = document.querySelectorAll('[data-fuel-history-popover]');
+  if (!popovers.length) return;
+
+  function closeAll(except) {
+    popovers.forEach((details) => {
+      if (details !== except) details.open = false;
+    });
+  }
+
+  popovers.forEach((details) => {
+    details.addEventListener('toggle', () => {
+      if (details.open) closeAll(details);
+    });
+  });
+
+  document.addEventListener('pointerdown', (event) => {
+    popovers.forEach((details) => {
+      if (details.open && !details.contains(event.target)) details.open = false;
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeAll();
+  });
+})();
