@@ -101,39 +101,38 @@
     </div>
   </div>
 
-  {% set has_odo = (odo_values | length) > 0 %}
-  {% if has_odo %}
-  <div class="card p-3 mb-3" data-time-chart>
-    <h5 class="mb-3">Wykres przebiegu</h5>
-    <div class="d-flex" style="min-width:0;">
-      <div data-chart-axis style="flex:none; position:relative; width:96px; height:240px; border-right:1px solid var(--bs-border-color);"></div>
-      <div data-chart-viewport tabindex="0" aria-label="Przewijaj wykres przebiegu poziomo"
-           style="flex:1; min-width:0; overflow-x:auto; overflow-y:hidden;">
-        <div data-chart-plot style="position:relative; height:240px; min-width:100%;">
-          <canvas id="odoChart" data-labels='{{ odo_labels | tojson }}' data-values='{{ odo_values | tojson }}'></canvas>
+  <section class="mileage-chart-panel mb-3" aria-labelledby="mileage-chart-title">
+    <div class="mileage-chart-header">
+      <div>
+        <h5 id="mileage-chart-title" class="mb-1">Historia przebiegu</h5>
+        <div class="mileage-chart-hint">Ctrl + kółko zmienia przybliżenie</div>
+      </div>
+
+      {% if mileage_points %}
+        <div class="mileage-chart-controls" aria-label="Sterowanie wykresem przebiegu">
+          <button type="button" data-mileage-zoom-out aria-label="Oddal wykres">−</button>
+          <output data-mileage-zoom aria-live="polite">100%</output>
+          <button type="button" data-mileage-zoom-in aria-label="Przybliż wykres">+</button>
+          <button type="button" class="mileage-chart-reset" data-mileage-zoom-reset>Całość</button>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if mileage_points %}
+      <div class="mileage-chart-layout" data-mileage-chart
+           data-points='{{ mileage_points | tojson }}'>
+        <div class="mileage-chart-y-axis" data-mileage-y-axis aria-hidden="true"></div>
+        <div class="mileage-chart-scroll" data-mileage-scroll tabindex="0"
+             aria-label="Przewijany wykres historii przebiegu">
+          <svg data-mileage-svg role="img"
+               aria-label="Historia przebiegu samochodu w czasie"></svg>
         </div>
       </div>
-    </div>
-    <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
-      <label for="odoChartPeriod" class="small mb-0">Czas na ekranie:</label>
-      <select id="odoChartPeriod" class="form-select form-select-sm w-auto" data-chart-period>
-        <option value="6">6 miesięcy</option>
-        <option value="12" selected>1 rok</option>
-        <option value="36">3 lata</option>
-        <option value="all">Całość</option>
-      </select>
-      <button type="button" class="btn btn-sm btn-outline-secondary" data-chart-latest>Najnowsze</button>
-      <span class="small text-muted ms-sm-auto" data-chart-dates></span>
-    </div>
-    <input type="range" class="form-range mt-2 mb-0" min="0" max="1000" value="1000"
-           aria-label="Przesuń wykres przebiegu w czasie" data-chart-scroll>
-    <div class="form-text">Przewijaj wykres poziomo, suwakiem, gładzikiem lub Shift + kółkiem myszki.</div>
-  </div>
-  {% else %}
-  <div class="alert alert-secondary p-3 mb-3">
-    Brak danych do wykresu — dodaj pierwszy wpis przebiegu.
-  </div>
-  {% endif %}
+      <div class="mileage-chart-summary" data-mileage-range></div>
+    {% else %}
+      <div class="mileage-chart-empty">Brak danych przebiegu</div>
+    {% endif %}
+  </section>
 
   {% set has_cons = (cons_values | reject('none') | list | length) > 0 %}
   {% if has_cons %}
