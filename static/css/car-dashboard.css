@@ -11,6 +11,37 @@
   background: #fff;
 }
 
+.dashboard-deadlines {
+  padding: .85rem !important;
+}
+
+.dashboard-deadlines .deadline-card {
+  padding: .65rem .75rem;
+}
+
+.deadline-card-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .35rem .65rem;
+}
+
+.deadline-card-date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .15rem .6rem;
+}
+
+.deadline-card-date strong {
+  font-size: 1.05rem;
+}
+
+.deadline-card-main .btn {
+  grid-column: 2;
+  padding-block: .15rem;
+}
+
 .deadline-card--due,
 .service-plan-card--due { border-left-color: var(--bs-danger); }
 .deadline-card--soon,
@@ -50,6 +81,56 @@
 .service-plan-metrics small {
   margin-top: .2rem;
   color: #6c757d;
+}
+
+.dashboard-service-plan-card {
+  display: grid;
+  grid-template-columns: minmax(130px, .9fr) minmax(280px, 1.8fr) auto;
+  align-items: center;
+  gap: .65rem;
+  padding: .65rem .75rem;
+}
+
+.dashboard-service-plan-title {
+  min-width: 0;
+}
+
+.dashboard-service-plan-title strong,
+.dashboard-service-plan-title small {
+  display: block;
+}
+
+.dashboard-service-plan-title .badge {
+  margin-top: .3rem;
+}
+
+.dashboard-service-plan-metrics {
+  gap: .4rem;
+  margin-top: 0;
+}
+
+.dashboard-service-plan-metrics > div {
+  padding: .4rem .55rem;
+}
+
+.dashboard-service-plan-metrics strong {
+  font-size: .9rem;
+  line-height: 1.2;
+}
+
+.dashboard-service-plan-metrics small {
+  font-size: .75rem;
+}
+
+.dashboard-service-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .35rem;
+}
+
+.dashboard-service-plan-done {
+  grid-column: 1 / -1;
 }
 
 .dashboard-empty-state {
@@ -105,5 +186,15 @@
 
   .dashboard-chart-card .mileage-chart-layout {
     height: 260px;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .dashboard-service-plan-card {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-service-plan-actions {
+    justify-content: flex-start;
   }
 }

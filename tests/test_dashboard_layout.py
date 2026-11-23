@@ -58,6 +58,9 @@ def test_dashboard_prioritizes_deadlines_and_moves_costs_to_bottom(app, client):
     assert "Szybkie akcje" not in html
     assert 'data-dashboard-main' in html
     assert 'data-dashboard-sidebar' in html
+    assert 'deadline-card-main' in html
+    assert 'dashboard-service-plan-card' in html
+    assert 'dashboard-service-plan-metrics' in html
     assert f'action="/cars/{car_id}/odometer/new"' in html
     assert 'data-bs-target="#modalFuel"' in html
     assert html.index('data-dashboard-costs') > html.index('data-dashboard-sidebar')
