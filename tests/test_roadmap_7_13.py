@@ -64,6 +64,47 @@ def test_service_items_recalculate_service_cost(app, client):
         assert db.session.get(ServiceEntry, service_id).cost is None
 
 
+def test_service_can_be_created_with_multiple_items(app, client):
+    car_id = _owned_car(app)
+    login(client)
+    page = client.get(f"/cars/{car_id}?tab=svc")
+    token = csrf_token(page)
+    assert b"data-service-item-add" in page.data
+    assert b"item_part_number[]" in page.data
+
+    response = client.post(
+        f"/cars/{car_id}/service/new",
+        data={
+            "csrf_token": token,
+            "date": "2026-11-23",
+            "title": "Olej i filtry",
+            "cost": "",
+            "item_type[]": ["fluid", "part", "labor"],
+            "item_name[]": ["Olej 5W40", "Filtr oleju", "Wymiana"],
+            "item_manufacturer[]": ["Motul", "Mann", ""],
+            "item_part_number[]": ["", "W 719/30", ""],
+            "item_quantity[]": ["5", "1", "1"],
+            "item_unit_price[]": ["40,00", "50,00", "100,00"],
+            "item_note[]": ["5 litrów", "", "robocizna"],
+        },
+    )
+    assert response.status_code == 302
+    assert "tab=svc" in response.headers["Location"]
+
+    with app.app_context():
+        service = ServiceEntry.query.filter_by(car_id=car_id, title="Olej i filtry").one()
+        assert service.cost == Decimal("350.00")
+        assert [item.name for item in service.items] == [
+            "Olej 5W40", "Filtr oleju", "Wymiana",
+        ]
+        assert service.items[1].part_number == "W 719/30"
+        assert service.items[0].quantity == Decimal("5.00")
+
+    service_page = client.get(f"/cars/{car_id}?tab=svc")
+    assert "Olej 5W40".encode() in service_page.data
+    assert "Filtr oleju".encode() in service_page.data
+
+
 def test_tires_modifications_timeline_and_document_link(app, client):
     car_id = _owned_car(app)
     with app.app_context():

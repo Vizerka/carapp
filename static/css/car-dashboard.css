@@ -238,6 +238,13 @@
   box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 22%);
 }
 
+.service-create-item {
+  padding: .65rem;
+  border: 1px solid #dee2e6;
+  border-radius: .5rem;
+  background: #f8f9fa;
+}
+
 @media (max-width: 575.98px) {
   .service-plan-metrics {
     grid-template-columns: 1fr;

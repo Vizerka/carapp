@@ -142,7 +142,7 @@
 
 {# --- Modal: Service --- #}
 <div class="modal fade" id="modalService" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-xl">
     <form class="modal-content" method="post" action="{{ url_for('service_new', car_id=car.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="modal-header">
@@ -159,6 +159,52 @@
           <div class="col-md-8"><input type="text" name="note" class="form-control" placeholder="notatka (opcjonalnie)"></div>
           <div class="col-12"><textarea name="description" class="form-control" rows="2" placeholder="opis (opcjonalnie)"></textarea></div>
         </div>
+
+        <div class="d-flex justify-content-between align-items-center gap-2 mt-3 mb-2">
+          <div>
+            <h6 class="mb-0">Pozycje serwisu / części</h6>
+            <div class="form-text">Rozpisz części, materiały i robociznę. Puste pozycje zostaną pominięte.</div>
+          </div>
+          <button class="btn btn-sm btn-outline-primary" type="button" data-service-item-add>+ Dodaj pozycję</button>
+        </div>
+
+        <div class="vstack gap-2" data-service-items>
+          <div class="service-create-item" data-service-item-row>
+            <div class="row g-2">
+              <div class="col-md-2">
+                <select name="item_type[]" class="form-select form-select-sm" aria-label="Typ pozycji">
+                  {% for key, label in service_item_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4"><input name="item_name[]" class="form-control form-control-sm" placeholder="nazwa części / usługi"></div>
+              <div class="col-md-3"><input name="item_manufacturer[]" class="form-control form-control-sm" placeholder="producent"></div>
+              <div class="col-md-3"><input name="item_part_number[]" class="form-control form-control-sm" placeholder="numer części"></div>
+              <div class="col-md-2"><input name="item_quantity[]" class="form-control form-control-sm" value="1" placeholder="ilość"></div>
+              <div class="col-md-2"><input name="item_unit_price[]" class="form-control form-control-sm" placeholder="cena szt. PLN"></div>
+              <div class="col-md-7"><input name="item_note[]" class="form-control form-control-sm" placeholder="notatka do pozycji"></div>
+              <div class="col-md-1 d-grid"><button class="btn btn-sm btn-outline-danger" type="button" data-service-item-remove aria-label="Usuń pozycję">×</button></div>
+            </div>
+          </div>
+        </div>
+
+        <template data-service-item-template>
+          <div class="service-create-item" data-service-item-row>
+            <div class="row g-2">
+              <div class="col-md-2">
+                <select name="item_type[]" class="form-select form-select-sm" aria-label="Typ pozycji">
+                  {% for key, label in service_item_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4"><input name="item_name[]" class="form-control form-control-sm" placeholder="nazwa części / usługi"></div>
+              <div class="col-md-3"><input name="item_manufacturer[]" class="form-control form-control-sm" placeholder="producent"></div>
+              <div class="col-md-3"><input name="item_part_number[]" class="form-control form-control-sm" placeholder="numer części"></div>
+              <div class="col-md-2"><input name="item_quantity[]" class="form-control form-control-sm" value="1" placeholder="ilość"></div>
+              <div class="col-md-2"><input name="item_unit_price[]" class="form-control form-control-sm" placeholder="cena szt. PLN"></div>
+              <div class="col-md-7"><input name="item_note[]" class="form-control form-control-sm" placeholder="notatka do pozycji"></div>
+              <div class="col-md-1 d-grid"><button class="btn btn-sm btn-outline-danger" type="button" data-service-item-remove aria-label="Usuń pozycję">×</button></div>
+            </div>
+          </div>
+        </template>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Anuluj</button>

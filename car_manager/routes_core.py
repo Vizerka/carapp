@@ -22,6 +22,7 @@ from .expense_categories import EXPENSE_CATEGORIES
 from .document_links import document_link_label, document_target_options
 from .routes_modifications import STATUSES as MODIFICATION_STATUSES
 from .routes_tires import SEASONS as TIRE_SEASONS
+from .routes_service_items import ITEM_TYPES as SERVICE_ITEM_TYPES
 from .statistics import fuel_statistics, tire_set_mileage
 from .timeline import build_timeline
 
@@ -466,6 +467,7 @@ def init_routes(app):
             target_documents=target_documents,
             modification_statuses=MODIFICATION_STATUSES,
             tire_seasons=TIRE_SEASONS,
+            service_item_types=SERVICE_ITEM_TYPES,
         )
 
     @app.post("/cars/<int:car_id>/delete")
