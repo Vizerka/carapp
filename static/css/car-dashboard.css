@@ -1,0 +1,109 @@
+.dashboard-layout > * {
+  min-width: 0;
+}
+
+.deadline-card,
+.service-plan-card {
+  padding: 1rem;
+  border: 1px solid #dee2e6;
+  border-left-width: 4px;
+  border-radius: .5rem;
+  background: #fff;
+}
+
+.deadline-card--due,
+.service-plan-card--due { border-left-color: var(--bs-danger); }
+.deadline-card--soon,
+.service-plan-card--soon { border-left-color: var(--bs-warning); }
+.deadline-card--ok,
+.service-plan-card--ok { border-left-color: var(--bs-success); }
+.deadline-card--unknown,
+.service-plan-card--unknown { border-left-color: var(--bs-secondary); }
+
+.service-plan-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+  margin-top: .9rem;
+}
+
+.service-plan-metrics > div {
+  padding: .7rem;
+  border-radius: .4rem;
+  background: #f8f9fa;
+}
+
+.service-plan-metrics strong,
+.service-plan-metrics small,
+.service-plan-label {
+  display: block;
+}
+
+.service-plan-label {
+  margin-bottom: .2rem;
+  color: #6c757d;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.service-plan-metrics small {
+  margin-top: .2rem;
+  color: #6c757d;
+}
+
+.dashboard-empty-state {
+  padding: 1rem;
+  color: #6c757d;
+  border: 1px dashed #adb5bd;
+  border-radius: .5rem;
+  background: #f8f9fa;
+}
+
+.dashboard-chart-card .mileage-chart-header {
+  align-items: flex-start;
+}
+
+.dashboard-chart-card .mileage-chart-layout {
+  height: 245px;
+}
+
+.dashboard-chart-card .mileage-chart-y-axis {
+  width: 72px;
+  flex-basis: 72px;
+}
+
+.dashboard-chart-card .mileage-chart-controls {
+  gap: .2rem;
+}
+
+.dashboard-chart-card .mileage-chart-controls button,
+.dashboard-chart-card .mileage-chart-controls output {
+  min-width: 2rem;
+  min-height: 2rem;
+  border-radius: 6px;
+}
+
+.dashboard-chart-card .mileage-chart-controls output {
+  min-width: 3.8rem;
+}
+
+.dashboard-chart-card .mileage-chart-controls .mileage-chart-reset {
+  min-width: 3.8rem;
+  padding-inline: .4rem;
+}
+
+.dashboard-inline-form {
+  padding-top: .85rem;
+  border-top: 1px solid #dee2e6;
+}
+
+@media (max-width: 575.98px) {
+  .service-plan-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-chart-card .mileage-chart-layout {
+    height: 260px;
+  }
+}

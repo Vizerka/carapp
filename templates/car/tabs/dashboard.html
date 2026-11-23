@@ -1,232 +1,172 @@
-{# ============================================================
-   DASHBOARD
-   ============================================================ #}
 {% if tab == 'dash' %}
-  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h5 class="mb-0">Koszt posiadania</h5>
-    <div class="btn-group btn-group-sm" role="group" aria-label="Okres kosztów">
-      <a class="btn btn-outline-secondary {% if cost_period == 'year' %}active{% endif %}"
-         href="{{ url_for('car_detail', car_id=car.id, tab='dash', cost_period='year') }}">Ten rok</a>
-      <a class="btn btn-outline-secondary {% if cost_period == '12m' %}active{% endif %}"
-         href="{{ url_for('car_detail', car_id=car.id, tab='dash', cost_period='12m') }}">12 miesięcy</a>
-      <a class="btn btn-outline-secondary {% if cost_period == 'all' %}active{% endif %}"
-         href="{{ url_for('car_detail', car_id=car.id, tab='dash', cost_period='all') }}">Całość</a>
-    </div>
-  </div>
-
-  <div class="row g-3 mb-3">
-    <div class="col-md-6 col-xl-3">
-      <div class="card p-3 h-100">
-        <div class="text-muted small">Paliwo</div>
-        <div class="fs-4 fw-semibold">
-          {% if fuel_total is not none %}{{ "%.2f"|format(fuel_total|float) }} PLN{% else %}—{% endif %}
-        </div>
-        <div class="text-muted small">suma z tankowań z kosztem</div>
-      </div>
-    </div>
-
-    <div class="col-md-6 col-xl-3">
-      <div class="card p-3 h-100">
-        <div class="text-muted small">Serwis</div>
-        <div class="fs-4 fw-semibold">
-          {% if service_total is not none %}{{ "%.2f"|format(service_total|float) }} PLN{% else %}—{% endif %}
-        </div>
-        <div class="text-muted small">suma wpisów serwisowych</div>
-      </div>
-    </div>
-
-    <div class="col-md-6 col-xl-3">
-      <div class="card p-3 h-100">
-        <div class="text-muted small">Pozostałe + modyfikacje</div>
-        <div class="fs-4 fw-semibold">
-          {% if expense_total is not none or modification_total is not none %}{{ "%.2f"|format(additional_total|float) }} PLN{% else %}—{% endif %}
-        </div>
-        <div class="text-muted small">OC, przeglądy, projekty i inne</div>
-      </div>
-    </div>
-
-    <div class="col-md-6 col-xl-3">
-      <div class="card p-3 h-100">
-        <div class="text-muted small">Łącznie</div>
-        <div class="fs-4 fw-semibold">
-          {% if total_cost is not none %}{{ "%.2f"|format(total_cost|float) }} PLN{% else %}—{% endif %}
-        </div>
-        <div class="text-muted small">paliwo + serwis + pozostałe</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card p-3 mb-3">
-    <div class="row g-3 align-items-start">
-      <div class="col-md-4">
-        <div class="text-muted small">Koszt / km</div>
-        <div class="fs-4 fw-semibold">
-          {% if cost_per_km is not none %}{{ "%.2f"|format(cost_per_km|float) }} PLN/km{% else %}—{% endif %}
-        </div>
-        <div class="text-muted small">
-          {% if distance %}dystans w okresie: {{ distance }} km{% else %}brak dwóch pomiarów przebiegu w okresie{% endif %}
-        </div>
-      </div>
-      <div class="col-md-8">
-        <div class="fw-semibold mb-2">Rozbicie kosztów</div>
-        {% if cost_breakdown %}
-          <div class="row row-cols-1 row-cols-sm-2 g-2">
-            {% for row in cost_breakdown %}
-              <div class="col d-flex justify-content-between gap-3 border-top pt-2">
-                <span>{{ row.label }}</span>
-                <strong>{{ "%.2f"|format(row.amount|float) }} PLN</strong>
-              </div>
-            {% endfor %}
+  <div class="row g-3 align-items-start dashboard-layout">
+    <main class="col-xl-8" data-dashboard-main>
+      <section class="card p-3 mb-3 dashboard-deadlines" aria-labelledby="deadlines-title">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <h5 id="deadlines-title" class="mb-1">Najbliższe terminy</h5>
+            <div class="text-muted small">Najpierw rzeczy, których lepiej nie przegapić.</div>
           </div>
-        {% else %}
-          <div class="text-muted small">Brak kosztów w wybranym okresie.</div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  <div class="card p-3 mb-3">
-    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
-      <div class="fw-semibold">Szybkie akcje</div>
-      <div class="d-flex flex-wrap gap-2">
-        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalOdo">+ Przebieg</button>
-        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalOC">+ Polisa</button>
-        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalTI">+ Przegląd</button>
-        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalFuel">+ Tankowanie</button>
-        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalInterval">+ Interwał</button>
-        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalService">+ Serwis</button>
-        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalExpense">+ Wydatek</button>
-        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalDoc">+ Dokument</button>
-      </div>
-    </div>
-  </div>
-
-  <section class="mileage-chart-panel mb-3" aria-labelledby="mileage-chart-title">
-    <div class="mileage-chart-header">
-      <div>
-        <h5 id="mileage-chart-title" class="mb-1">Historia przebiegu</h5>
-        <div class="mileage-chart-hint">Ctrl + kółko zmienia przybliżenie</div>
-      </div>
-
-      {% if mileage_points %}
-        <div class="mileage-chart-controls" aria-label="Sterowanie wykresem przebiegu">
-          <button type="button" data-mileage-zoom-out aria-label="Oddal wykres">−</button>
-          <output data-mileage-zoom aria-live="polite">100%</output>
-          <button type="button" data-mileage-zoom-in aria-label="Przybliż wykres">+</button>
-          <button type="button" class="mileage-chart-reset" data-mileage-zoom-reset>Całość</button>
+          <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalInterval">+ Plan serwisowy</button>
         </div>
-      {% endif %}
-    </div>
 
-    {% if mileage_points %}
-      <div class="mileage-chart-layout" data-mileage-chart
-           data-points='{{ mileage_points | tojson }}'
-           data-value-field="km"
-           data-axis-title="Przebieg [km]"
-           data-unit="km"
-           data-default-label="Odczyt licznika"
-           data-count-one="odczyt"
-           data-count-many="odczytów"
-           data-min-margin="1000">
-        <div class="mileage-chart-y-axis" data-mileage-y-axis aria-hidden="true"></div>
-        <div class="mileage-chart-scroll" data-mileage-scroll tabindex="0"
-             aria-label="Przewijany wykres historii przebiegu">
-          <svg data-mileage-svg role="img"
-               aria-label="Historia przebiegu samochodu w czasie"></svg>
-        </div>
-      </div>
-      <div class="mileage-chart-summary" data-mileage-range></div>
-    {% else %}
-      <div class="mileage-chart-empty">Brak danych przebiegu</div>
-    {% endif %}
-  </section>
-
-  {% set has_cons = (cons_values | reject('none') | list | length) > 0 %}
-  {% if has_cons %}
-  <section class="mileage-chart-panel mb-3" aria-labelledby="consumption-chart-title">
-    <div class="mileage-chart-header">
-      <div>
-        <h5 id="consumption-chart-title" class="mb-1">Spalanie (pełny → pełny)</h5>
-        <div class="mileage-chart-hint">Ctrl + kółko zmienia przybliżenie</div>
-      </div>
-
-      <div class="mileage-chart-controls" aria-label="Sterowanie wykresem spalania">
-        <button type="button" data-mileage-zoom-out aria-label="Oddal wykres">−</button>
-        <output data-mileage-zoom aria-live="polite">100%</output>
-        <button type="button" data-mileage-zoom-in aria-label="Przybliż wykres">+</button>
-        <button type="button" class="mileage-chart-reset" data-mileage-zoom-reset>Całość</button>
-      </div>
-    </div>
-
-    <div class="mileage-chart-layout" data-mileage-chart data-consumption-chart
-         data-points='{{ consumption_points | tojson }}'
-         data-value-field="value"
-         data-axis-title="Spalanie [L/100 km]"
-         data-unit="L/100 km"
-         data-default-label="Spalanie pełny → pełny"
-         data-count-one="wynik"
-         data-count-many="wyników"
-         data-max-decimals="2"
-         data-min-margin="0.5">
-      <div class="mileage-chart-y-axis" data-mileage-y-axis aria-hidden="true"></div>
-      <div class="mileage-chart-scroll" data-mileage-scroll tabindex="0"
-           aria-label="Przewijany wykres spalania">
-        <svg data-mileage-svg role="img"
-             aria-label="Historia spalania samochodu w czasie"></svg>
-      </div>
-    </div>
-    <div class="mileage-chart-summary" data-mileage-range></div>
-    <div class="mileage-chart-note">
-      Liczone między pełnymi tankowaniami. Przerwa w zapisach pomija wynik dla tego okresu.
-    </div>
-  </section>
-  {% else %}
-  <div class="alert alert-secondary p-3 mb-3">
-    Brak wiarygodnych danych do wykresu spalania — potrzebne są dwa kolejne pełne tankowania bez przerwy w zapisach.
-  </div>
-  {% endif %}
-
-  <div class="row g-3">
-    <div class="col-md-6">
-      <div class="card p-3 h-100">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="fw-semibold">Ostatnie tankowania</div>
-          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='fuel') }}">Zobacz</a>
-        </div>
-        <ul class="list-unstyled small mb-0">
-          {% for f in (fills_p.items[:5] if fills_p else []) %}
-            <li class="border-top py-2">
-              <b>{{ f.date }}</b> · {{ f.km }} km · {{ f.liters }} L
-              {% if f.total_cost %}· {{ f.total_cost }} PLN{% endif %}
-              {% if f.full_tank %}<span class="badge text-bg-success ms-1">pełny</span>{% endif %}
-              {% if f.unrecorded_refuels_since_last_full %}<span class="badge text-bg-warning ms-1">przerwa w zapisach</span>{% endif %}
-            </li>
-          {% else %}
-            <li class="text-muted">Brak tankowań.</li>
+        <div class="row g-3 mb-3">
+          {% for item in dashboard_deadlines %}
+            {% set tone = 'secondary' %}
+            {% if item.status == 'due' %}{% set tone = 'danger' %}
+            {% elif item.status == 'soon' %}{% set tone = 'warning' %}
+            {% elif item.status == 'ok' %}{% set tone = 'success' %}{% endif %}
+            <div class="col-md-6">
+              <article class="deadline-card deadline-card--{{ item.status }} h-100">
+                <div class="d-flex justify-content-between gap-2 align-items-start">
+                  <div>
+                    <div class="text-muted small">{{ item.title }}</div>
+                    <div class="fs-5 fw-semibold">{{ item.valid_to or 'Brak terminu' }}</div>
+                  </div>
+                  <span class="badge text-bg-{{ tone }}">
+                    {% if item.days_left is none %}brak danych
+                    {% elif item.days_left < 0 %}{{ -item.days_left }} dni po terminie
+                    {% elif item.days_left == 0 %}dzisiaj
+                    {% else %}za {{ item.days_left }} dni{% endif %}
+                  </span>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary mt-3" data-bs-toggle="modal" data-bs-target="#{{ item.modal_id }}">
+                  {% if item.kind == 'insurance' %}+ Nowa polisa{% else %}+ Nowy przegląd{% endif %}
+                </button>
+              </article>
+            </div>
           {% endfor %}
-        </ul>
-      </div>
-    </div>
-
-    <div class="col-md-6">
-      <div class="card p-3 h-100">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="fw-semibold">Ostatni serwis</div>
-          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='svc') }}">Zobacz</a>
         </div>
-        <ul class="list-unstyled small mb-0">
-          {% for s in (services_p.items[:5] if services_p else []) %}
-            <li class="border-top py-2">
-              <b>{{ s.date }}</b>
-              {% if s.km %}· {{ s.km }} km{% endif %}
-              · {{ s.title }}
-              {% if s.cost %}· {{ s.cost }} PLN{% endif %}
-            </li>
+
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+          <h6 class="mb-0">Plan serwisowy</h6>
+          <span class="text-muted small">{% if current_km is not none %}Stan licznika: {{ current_km }} km{% else %}Brak aktualnego przebiegu{% endif %}</span>
+        </div>
+        <div class="row g-3">
+          {% for iv, c in interval_reminders %}
+            {% set tone = 'secondary' %}
+            {% if c.status == 'due' %}{% set tone = 'danger' %}
+            {% elif c.status == 'soon' %}{% set tone = 'warning' %}
+            {% elif c.status == 'ok' %}{% set tone = 'success' %}{% endif %}
+            <div class="col-lg-6">
+              <article class="service-plan-card service-plan-card--{{ c.status }} h-100">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                  <strong>{{ iv.name }}</strong>
+                  <span class="badge text-bg-{{ tone }}">
+                    {% if c.status == 'due' %}po terminie{% elif c.status == 'soon' %}zbliża się{% elif c.status == 'ok' %}zaplanowane{% else %}uzupełnij dane{% endif %}
+                  </span>
+                </div>
+                <div class="service-plan-metrics">
+                  <div>
+                    <span class="service-plan-label">Przebieg</span>
+                    {% if c.next_km is none %}<strong>Nie ustawiono</strong>
+                    {% elif c.km_left is none %}<strong>przy {{ c.next_km }} km</strong>
+                    {% elif c.km_left < 0 %}<strong class="text-danger">przekroczono o {{ -c.km_left }} km</strong>
+                    {% elif c.km_left == 0 %}<strong class="text-danger">termin osiągnięty</strong>
+                    {% else %}<strong>zostało {{ c.km_left }} km</strong>{% endif %}
+                    {% if c.next_km is not none %}<small>termin: {{ c.next_km }} km</small>{% endif %}
+                  </div>
+                  <div>
+                    <span class="service-plan-label">Czas</span>
+                    {% if c.next_date is none %}<strong>Nie ustawiono</strong>
+                    {% elif c.days_left is none %}<strong>{{ c.next_date }}</strong>
+                    {% elif c.days_left < 0 %}<strong class="text-danger">{{ -c.days_left }} dni po terminie</strong>
+                    {% elif c.days_left == 0 %}<strong class="text-danger">dzisiaj</strong>
+                    {% else %}<strong>za {{ c.days_left }} dni</strong>{% endif %}
+                    {% if c.next_date is not none %}<small>termin: {{ c.next_date }}</small>{% endif %}
+                  </div>
+                </div>
+                {% if iv.note %}<div class="text-muted small mt-2">{{ iv.note }}</div>{% endif %}
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('interval_edit', interval_id=iv.id) }}">Edytuj</a>
+                  <button class="btn btn-sm btn-outline-success" type="button" data-bs-toggle="collapse" data-bs-target="#doneInterval{{ iv.id }}">Oznacz jako zrobione</button>
+                </div>
+                <div class="collapse mt-2" id="doneInterval{{ iv.id }}">
+                  <form method="post" action="{{ url_for('interval_mark_done', interval_id=iv.id) }}" class="row g-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="col-sm-5"><input type="date" name="date" value="{{ today }}" class="form-control form-control-sm"></div>
+                    <div class="col-sm-4"><input type="number" name="km" class="form-control form-control-sm" placeholder="przebieg" min="0" step="1"></div>
+                    <div class="col-sm-3 d-grid"><button class="btn btn-sm btn-success">Zapisz</button></div>
+                  </form>
+                </div>
+              </article>
+            </div>
           {% else %}
-            <li class="text-muted">Brak wpisów serwisowych.</li>
+            <div class="col-12"><div class="dashboard-empty-state">Nie ma jeszcze planu serwisowego. Dodaj np. olej, rozrząd albo płyn hamulcowy.</div></div>
           {% endfor %}
-        </ul>
-      </div>
-    </div>
+        </div>
+      </section>
+
+      <section class="row g-3" aria-label="Ostatnia aktywność">
+        <div class="col-md-6"><div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2"><strong>Ostatnie tankowania</strong><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='fuel') }}">Historia</a></div>
+          <ul class="list-unstyled small mb-0">
+            {% for f in (fills_p.items[:5] if fills_p else []) %}<li class="border-top py-2"><b>{{ f.date }}</b> · {{ f.km }} km · {{ f.liters }} L{% if f.total_cost %} · {{ f.total_cost }} PLN{% endif %}</li>
+            {% else %}<li class="text-muted">Brak tankowań.</li>{% endfor %}
+          </ul>
+        </div></div>
+        <div class="col-md-6"><div class="card p-3 h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2"><strong>Ostatni serwis</strong><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('car_detail', car_id=car.id, tab='svc') }}">Historia</a></div>
+          <ul class="list-unstyled small mb-0">
+            {% for s in (services_p.items[:5] if services_p else []) %}<li class="border-top py-2"><b>{{ s.date }}</b>{% if s.km %} · {{ s.km }} km{% endif %} · {{ s.title }}{% if s.cost %} · {{ s.cost }} PLN{% endif %}</li>
+            {% else %}<li class="text-muted">Brak wpisów serwisowych.</li>{% endfor %}
+          </ul>
+        </div></div>
+      </section>
+    </main>
+
+    <aside class="col-xl-4" data-dashboard-sidebar>
+      <section class="mileage-chart-panel dashboard-chart-card mb-3" aria-labelledby="mileage-chart-title">
+        <div class="mileage-chart-header">
+          <div><h5 id="mileage-chart-title" class="mb-1">Przebieg</h5><div class="mileage-chart-hint">Historia licznika</div></div>
+          {% if mileage_points %}<div class="mileage-chart-controls" aria-label="Sterowanie wykresem przebiegu">
+            <button type="button" data-mileage-zoom-out aria-label="Oddal wykres">−</button><output data-mileage-zoom>100%</output><button type="button" data-mileage-zoom-in aria-label="Przybliż wykres">+</button><button type="button" class="mileage-chart-reset" data-mileage-zoom-reset>Całość</button>
+          </div>{% endif %}
+        </div>
+        {% if mileage_points %}
+          <div class="mileage-chart-layout" data-mileage-chart data-points='{{ mileage_points | tojson }}' data-value-field="km" data-axis-title="Przebieg [km]" data-unit="km" data-default-label="Odczyt licznika" data-count-one="odczyt" data-count-many="odczytów" data-min-margin="1000">
+            <div class="mileage-chart-y-axis" data-mileage-y-axis aria-hidden="true"></div><div class="mileage-chart-scroll" data-mileage-scroll tabindex="0"><svg data-mileage-svg role="img" aria-label="Historia przebiegu samochodu w czasie"></svg></div>
+          </div><div class="mileage-chart-summary" data-mileage-range></div>
+        {% else %}<div class="mileage-chart-empty">Brak danych przebiegu</div>{% endif %}
+        <form class="dashboard-inline-form mt-3" method="post" action="{{ url_for('odometer_new', car_id=car.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="fw-semibold small mb-2">Dodaj odczyt</div>
+          <div class="row g-2"><div class="col-5"><input type="date" name="date" value="{{ today }}" class="form-control form-control-sm" required></div><div class="col-7"><input type="number" name="km" class="form-control form-control-sm" placeholder="stan licznika [km]" min="0" step="1" required></div><div class="col-8"><input type="text" name="note" class="form-control form-control-sm" placeholder="notatka (opcjonalnie)"></div><div class="col-4 d-grid"><button class="btn btn-sm btn-primary">Zapisz</button></div></div>
+        </form>
+      </section>
+
+      {% set has_cons = (cons_values | reject('none') | list | length) > 0 %}
+      <section class="mileage-chart-panel dashboard-chart-card mb-3" aria-labelledby="consumption-chart-title">
+        <div class="mileage-chart-header">
+          <div><h5 id="consumption-chart-title" class="mb-1">Spalanie</h5><div class="mileage-chart-hint">Pełny bak → pełny bak</div></div>
+          {% if has_cons %}<div class="mileage-chart-controls" aria-label="Sterowanie wykresem spalania">
+            <button type="button" data-mileage-zoom-out aria-label="Oddal wykres">−</button><output data-mileage-zoom>100%</output><button type="button" data-mileage-zoom-in aria-label="Przybliż wykres">+</button><button type="button" class="mileage-chart-reset" data-mileage-zoom-reset>Całość</button>
+          </div>{% endif %}
+        </div>
+        {% if has_cons %}
+          <div class="mileage-chart-layout" data-mileage-chart data-consumption-chart data-points='{{ consumption_points | tojson }}' data-value-field="value" data-axis-title="L/100 km" data-unit="L/100 km" data-default-label="Spalanie pełny → pełny" data-count-one="wynik" data-count-many="wyników" data-max-decimals="2" data-min-margin="0.5">
+            <div class="mileage-chart-y-axis" data-mileage-y-axis aria-hidden="true"></div><div class="mileage-chart-scroll" data-mileage-scroll tabindex="0"><svg data-mileage-svg role="img" aria-label="Historia spalania samochodu w czasie"></svg></div>
+          </div><div class="mileage-chart-summary" data-mileage-range></div>
+        {% else %}<div class="mileage-chart-empty px-3 text-center">Potrzebne są dwa pełne tankowania bez przerwy w zapisach.</div>{% endif %}
+        <div class="d-flex justify-content-between align-items-center gap-2 mt-3"><span class="text-muted small">Spalanie powstaje z wpisów tankowania.</span><button class="btn btn-sm btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#modalFuel">+ Tankowanie</button></div>
+      </section>
+    </aside>
   </div>
+
+  <section class="dashboard-costs mt-4" data-dashboard-costs aria-labelledby="costs-title">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div><h5 id="costs-title" class="mb-1">Koszt posiadania</h5><div class="text-muted small">Podsumowanie finansów — bez wciskania się przed pilniejsze sprawy.</div></div>
+      <div class="d-flex flex-wrap gap-2"><button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalExpense">+ Wydatek</button><div class="btn-group btn-group-sm" role="group" aria-label="Okres kosztów">
+        <a class="btn btn-outline-secondary {% if cost_period == 'year' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='dash', cost_period='year') }}#costs-title">Ten rok</a><a class="btn btn-outline-secondary {% if cost_period == '12m' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='dash', cost_period='12m') }}#costs-title">12 miesięcy</a><a class="btn btn-outline-secondary {% if cost_period == 'all' %}active{% endif %}" href="{{ url_for('car_detail', car_id=car.id, tab='dash', cost_period='all') }}#costs-title">Całość</a>
+      </div></div>
+    </div>
+    <div class="row g-3 mb-3">
+      {% for label, value, hint in [('Paliwo', fuel_total, 'suma z tankowań z kosztem'), ('Serwis', service_total, 'suma wpisów serwisowych'), ('Pozostałe + modyfikacje', (additional_total if expense_total is not none or modification_total is not none else none), 'OC, przeglądy, projekty i inne'), ('Łącznie', total_cost, 'paliwo + serwis + pozostałe')] %}
+        <div class="col-md-6 col-xl-3"><div class="card p-3 h-100"><div class="text-muted small">{{ label }}</div><div class="fs-4 fw-semibold">{% if value is not none %}{{ "%.2f"|format(value|float) }} PLN{% else %}—{% endif %}</div><div class="text-muted small">{{ hint }}</div></div></div>
+      {% endfor %}
+    </div>
+    <div class="card p-3"><div class="row g-3 align-items-start">
+      <div class="col-md-4"><div class="text-muted small">Koszt / km</div><div class="fs-4 fw-semibold">{% if cost_per_km is not none %}{{ "%.2f"|format(cost_per_km|float) }} PLN/km{% else %}—{% endif %}</div><div class="text-muted small">{% if distance %}dystans w okresie: {{ distance }} km{% else %}brak dwóch pomiarów przebiegu w okresie{% endif %}</div></div>
+      <div class="col-md-8"><div class="fw-semibold mb-2">Rozbicie kosztów</div>{% if cost_breakdown %}<div class="row row-cols-1 row-cols-sm-2 g-2">{% for row in cost_breakdown %}<div class="col d-flex justify-content-between gap-3 border-top pt-2"><span>{{ row.label }}</span><strong>{{ "%.2f"|format(row.amount|float) }} PLN</strong></div>{% endfor %}</div>{% else %}<div class="text-muted small">Brak kosztów w wybranym okresie.</div>{% endif %}</div>
+    </div></div>
+  </section>
 {% endif %}
