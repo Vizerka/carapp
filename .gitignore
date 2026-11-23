@@ -3,6 +3,7 @@
 __pycache__/
 instance/
 .env
+.mail-reminders.*
 uploads/
 *.db
 *.db.*

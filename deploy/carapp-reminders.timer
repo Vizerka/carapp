@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily Car Manager email reminders
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 Europe/Warsaw
+Persistent=true
+
+[Install]
+WantedBy=timers.target
